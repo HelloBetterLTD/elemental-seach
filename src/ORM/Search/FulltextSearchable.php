@@ -8,12 +8,15 @@
 
 namespace SilverStripers\ElementalSearch\ORM\Search;
 
+use DNADesign\Elemental\Models\ElementalArea;
 use Exception;
 use DNADesign\Elemental\Models\BaseElement;
 use SilverStripe\Assets\File;
 use SilverStripe\CMS\Controllers\ContentController;
 use SilverStripe\CMS\Model\SiteTree;
 use SilverStripe\Core\ClassInfo;
+use SilverStripe\ORM\DataObject;
+use SilverStripers\ElementalSearch\ORM\Connect\MySQLDatabase;
 
 class FulltextSearchable extends \SilverStripe\ORM\Search\FulltextSearchable
 {
@@ -26,18 +29,10 @@ class FulltextSearchable extends \SilverStripe\ORM\Search\FulltextSearchable
         );
 
         if(in_array(BaseElement::class, $searchableClasses)) {
-            $elements = ClassInfo::subclassesFor(BaseElement::class);
-            foreach ($elements as $element) {
-                $singleton = singleton($element);
-                $configs = $singleton->config()->uninherited('fulltext_fields');
-                if($configs){
-                    if (!in_array($element, $searchableClasses)) {
-                        $searchableClasses[] = $element;
-                    }
-                    $defaultColumns[$element] = $configs;
-                }
-            }
+            self::add_elemental_classes($searchableClasses);
+            $defaultColumns = array_merge($defaultColumns, self::get_elemental_columns());
         }
+
 
         if (!is_array($searchableClasses)) {
             $searchableClasses = array($searchableClasses);
@@ -61,5 +56,72 @@ class FulltextSearchable extends \SilverStripe\ORM\Search\FulltextSearchable
         }
     }
 
+    public static function get_elemental_classes()
+    {
+        $classes = [];
+        $elements = ClassInfo::subclassesFor(BaseElement::class);
+        foreach ($elements as $element) {
+            $singleton = singleton($element);
+            if($configs = $singleton->config()->uninherited('fulltext_fields')){
+                $classes[] = $element;
+            }
+        }
+        return $classes;
+    }
+
+    public static function get_elemental_columns($tablePrefix = false)
+    {
+        $columns = [];
+        $elements = ClassInfo::subclassesFor(BaseElement::class);
+        foreach ($elements as $element) {
+            $singleton = singleton($element);
+            if($configs = $singleton->config()->uninherited('fulltext_fields')){
+                if($tablePrefix) {
+                    $cols = [];
+                    foreach ($configs as $field) {
+                        $elementTable = MySQLDatabase::versioned_tables($element,
+                            DataObject::getSchema()->tableName($element));
+                        $cols[] = '"' . $elementTable . '"."' . $field . '"';
+                    }
+                    $columns[$element] = $cols;
+                }
+                else {
+                    $columns[$element] = $configs;
+                }
+            }
+        }
+        return $columns;
+    }
+
+    public static function add_elemental_classes(&$searchableClasses)
+    {
+        if(in_array(BaseElement::class, $searchableClasses)) {
+            $searchableClasses = array_unique(array_merge($searchableClasses, self::get_elemental_classes()));
+        }
+    }
+
+    public static function is_elemental_search($searchableClasses)
+    {
+        return in_array(BaseElement::class, $searchableClasses);
+    }
+
+    public static function get_objects_with_elemental()
+    {
+        $classesAndRelations = [];
+        $dataClasses = ClassInfo::subclassesFor(DataObject::class);
+        $elementalClasses = ClassInfo::subclassesFor(BaseElement::class);
+        foreach ($dataClasses as $class) {
+            if(!in_array($class, $elementalClasses) && ($hasOne = singleton($class)->uninherited('has_one')) && in_array(ElementalArea::class, $hasOne)) {
+                $relations = [];
+                foreach ($hasOne as $relation => $type) {
+                    if($type == ElementalArea::class) {
+                        $relations[] = $relation;
+                    }
+                }
+                $classesAndRelations[$class] = $relations;
+            }
+        }
+        return $classesAndRelations;
+    }
 
 }

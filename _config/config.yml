@@ -7,3 +7,13 @@ DNADesign\Elemental\Models\BaseElement:
 DNADesign\Elemental\Models\ElementContent:
   extensions:
     - SilverStripers\ElementalSearch\Extensions\ElementContentExtension
+
+SilverStripe\Core\Injector\Injector:
+  MySQLPDODatabase:
+    class: SilverStripers\ElementalSearch\ORM\Connect\MySQLDatabase
+  MySQLDatabase:
+    class: SilverStripers\ElementalSearch\ORM\Connect\MySQLDatabase
+  SilverStripe\ORM\Connect\MySQLDatabase:
+    class: SilverStripers\ElementalSearch\ORM\Connect\MySQLDatabase
+  SilverStripe\CMS\Search\SearchForm:
+    class: SilverStripers\ElementalSearch\CMS\Search\SearchForm
