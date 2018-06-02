@@ -1,0 +1,9 @@
+---
+Name: elemental-search
+---
+DNADesign\Elemental\Models\BaseElement:
+  extensions:
+    - SilverStripers\ElementalSearch\Extensions\ElementSearchExtension
+DNADesign\Elemental\Models\ElementContent:
+  extensions:
+    - SilverStripers\ElementalSearch\Extensions\ElementContentExtension
