@@ -9,12 +9,10 @@
         "name": "Nivanka Fonseka",
         "email": "nivanka@silverstripers.com"
     }],
+    "minimum-stability": "dev",
+	"prefer-stable": true,
     "require": {
-        "silverstripe/framework": "^4",
-        "silverstripe/cms": "^4",
-        "silverstripe/siteconfig": "^4",
-        "silverstripe/reports": "^4",
-        "silverstripe/asset-admin": "^1"
+		"dnadesign/silverstripe-elemental": "^2"
     },
     "autoload": {
         "psr-4": {
