@@ -198,16 +198,15 @@ class MySQLDatabase extends \SilverStripe\ORM\Connect\MySQLDatabase
 				->leftJoin("{$baseElementTable}", "{$baseElementTable}.ParentID = {$elementalAreaTable}.ID");
 
 
-
-
 			foreach (FulltextSearchable::get_elemental_classes() as $currentClass) {
 				$elementTable = MySQLDatabase::versioned_tables($currentClass,
 					DataObject::getSchema()->tableName($currentClass));
-				$list = $list->leftJoin("$elementTable", '"'. $elementTable . '"."ID" = "' . $baseElementTable . '"."ID"');
+				if($elementTable != $baseElementTable) {
+					$list = $list->leftJoin("$elementTable", '"' . $elementTable . '"."ID" = "' . $baseElementTable . '"."ID"');
+				}
 			}
 
 			$list = $list->where($notMatch . $match[$elementalClass] . $extraFilters[$elementalClass]);
-
 
 			$lists[$elementalClass] = $list;
 			$sqlTables[$elementalClass] = '"' . DataObject::getSchema()->tableName($elementalClass) . '"';
