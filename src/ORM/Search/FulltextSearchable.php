@@ -16,6 +16,7 @@ use SilverStripe\CMS\Controllers\ContentController;
 use SilverStripe\CMS\Model\SiteTree;
 use SilverStripe\Core\ClassInfo;
 use SilverStripe\ORM\DataObject;
+use SilverStripe\ORM\DB;
 use SilverStripers\ElementalSearch\ORM\Connect\MySQLDatabase;
 
 class FulltextSearchable extends \SilverStripe\ORM\Search\FulltextSearchable
@@ -32,11 +33,22 @@ class FulltextSearchable extends \SilverStripe\ORM\Search\FulltextSearchable
             self::add_elemental_classes($searchableClasses);
             $defaultColumns = array_merge($defaultColumns, self::get_elemental_columns());
         }
-
+        $dbConn = DB::get_conn();
+        foreach(self::get_objects_with_elemental() as $class => $areas) {
+            if($class != 'Page') {
+                $baseTable = MySQLDatabase::versioned_tables($class, DataObject::getSchema()->baseDataTable($class));
+                $baseFields = $dbConn->getSchemaManager()->fieldList($baseTable);
+                if (array_key_exists('Title', $baseFields)) {
+                    $class::add_extension(sprintf('%s(%s)', static::class, "'" . implode("','", ['Title']) . "''"));
+                }
+            }
+        }
 
         if (!is_array($searchableClasses)) {
             $searchableClasses = array($searchableClasses);
         }
+
+
         foreach ($searchableClasses as $class) {
             if (!class_exists($class)) {
                 continue;

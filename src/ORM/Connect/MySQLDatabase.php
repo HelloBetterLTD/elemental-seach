@@ -56,7 +56,7 @@ class MySQLDatabase extends \SilverStripe\ORM\Connect\MySQLDatabase
 		$alternativeFileFilter = "",
 		$invertedMatch = false
 	) {
-		$elementClasses = ClassInfo::subclassesFor(BaseElement::class);
+
 		$searchElemental = FulltextSearchable::is_elemental_search($classesToSearch);
 		$elementalRelatedClasses = FulltextSearchable::get_objects_with_elemental();
 
@@ -134,9 +134,19 @@ class MySQLDatabase extends \SilverStripe\ORM\Connect\MySQLDatabase
 			$relevance[$fileClass] = "MATCH (Name, Title) AGAINST ('$relevanceKeywords')";
 
 
-			if($searchElemental) foreach ($elementalRelatedClasses as $elementalClass => $relation) {
+			if($searchElemental) foreach ($elementalRelatedClasses as $relatedFromClass => $relation) {
 				$matches = [];
 				$relevances = [];
+
+				$relatedFromBaseTable = self::versioned_tables($relatedFromClass, DataObject::getSchema()->baseDataTable($relatedFromClass));
+				$relatedTableFields = $this->getSchemaManager()->fieldList($relatedFromBaseTable);
+				if(array_key_exists('Title', $relatedTableFields)) {
+					$matches[] = "MATCH (\"$relatedFromBaseTable\".\"Title\") AGAINST ('$keywords' $boolean)"
+						. " + MATCH (\"$relatedFromBaseTable\".\"Title\") AGAINST ('$htmlEntityKeywords' $boolean)";
+
+					$relevances[] = "MATCH (\"$relatedFromBaseTable\".\"Title\") AGAINST ('$relevanceKeywords' $boolean)"
+						. " + MATCH (\"$relatedFromBaseTable\".\"Title\") AGAINST ('$htmlEntityRelevanceKeywords' $boolean)";
+				}
 
 
 
@@ -157,8 +167,8 @@ class MySQLDatabase extends \SilverStripe\ORM\Connect\MySQLDatabase
 						. ") AGAINST ('$htmlEntityRelevanceKeywords'))";
 				}
 
-				$relevance[$elementalClass] = implode(' + ', $relevances);
-				$match[$elementalClass] = implode(' + ', $matches);
+				$relevance[$relatedFromClass] = implode(' + ', $relevances);
+				$match[$relatedFromClass] = implode(' + ', $matches);
 
 			}
 
