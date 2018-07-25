@@ -35,7 +35,7 @@ class FulltextSearchable extends \SilverStripe\ORM\Search\FulltextSearchable
         }
         $dbConn = DB::get_conn();
         foreach(self::get_objects_with_elemental() as $class => $areas) {
-            if($class != 'Page') {
+            if(!in_array($class, ClassInfo::subclassesFor(\Page::class))) {
                 $baseTable = MySQLDatabase::versioned_tables($class, DataObject::getSchema()->baseDataTable($class));
                 $baseFields = $dbConn->getSchemaManager()->fieldList($baseTable);
                 if (array_key_exists('Title', $baseFields)) {
