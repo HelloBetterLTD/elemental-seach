@@ -22,312 +22,170 @@ use SilverStripe\ORM\DataObject;
 use SilverStripe\ORM\DB;
 use SilverStripe\ORM\PaginatedList;
 use SilverStripe\ORM\Queries\SQLSelect;
+use SilverStripe\ORM\Connect\MySQLDatabase as SS_MySQLDatabase;
 use SilverStripe\Versioned\Versioned;
+use SilverStripers\ElementalSearch\Model\SearchDocument;
 use SilverStripers\ElementalSearch\ORM\Search\FulltextSearchable;
 
 
-class MySQLDatabase extends \SilverStripe\ORM\Connect\MySQLDatabase
+
+class MySQLDatabase extends SS_MySQLDatabase
 {
 
-	/**
-	 * The core search engine, used by this class and its subclasses to do fun stuff.
-	 * Searches both SiteTree and File.
-	 *
-	 * @param array $classesToSearch
-	 * @param string $keywords Keywords as a string.
-	 * @param int $start
-	 * @param int $pageLength
-	 * @param string $sortBy
-	 * @param string $extraFilter
-	 * @param bool $booleanSearch
-	 * @param string $alternativeFileFilter
-	 * @param bool $invertedMatch
-	 * @return PaginatedList
-	 * @throws Exception
-	 */
-	public function searchEngine(
-		$classesToSearch,
-		$keywords,
-		$start,
-		$pageLength,
-		$sortBy = "Relevance DESC",
-		$extraFilter = "",
-		$booleanSearch = false,
-		$alternativeFileFilter = "",
-		$invertedMatch = false
-	) {
+    public function searchEngine(
+        $classesToSearch,
+        $keywords,
+        $start,
+        $pageLength,
+        $sortBy = "Relevance DESC",
+        $extraFilter = "",
+        $booleanSearch = false,
+        $alternativeFileFilter = "",
+        $invertedMatch = false
+    ) {
 
-		$searchElemental = FulltextSearchable::is_elemental_search($classesToSearch);
-		$elementalRelatedClasses = FulltextSearchable::get_objects_with_elemental();
+        $documentClass = SearchDocument::class;
+        $fileClass = File::class;
+        if (!class_exists($documentClass)) {
+            throw new Exception('MySQLDatabase->searchEngine() requires "SearchDocument" class');
+        }
+        if (!class_exists($fileClass)) {
+            throw new Exception('MySQLDatabase->searchEngine() requires "File" class');
+        }
 
-		$pageClass = SiteTree::class;
-		$fileClass = File::class;
-		if (!class_exists($pageClass)) {
-			throw new Exception('MySQLDatabase->searchEngine() requires "SiteTree" class');
-		}
-		if (!class_exists($fileClass)) {
-			throw new Exception('MySQLDatabase->searchEngine() requires "File" class');
-		}
+        $keywords = $this->escapeString($keywords);
+        $htmlEntityKeywords = htmlentities($keywords, ENT_NOQUOTES, 'UTF-8');
 
-		$keywords = $this->escapeString($keywords);
-		$htmlEntityKeywords = htmlentities($keywords, ENT_NOQUOTES, 'UTF-8');
+        $extraFilters = array($documentClass => '', $fileClass => '');
 
-		$extraFilters = array($pageClass => '', $fileClass => '');
-		if($searchElemental) foreach ($elementalRelatedClasses as $elementalClass => $relation) {
-			$baseTable = MySQLDatabase::versioned_tables($elementalClass, DataObject::getSchema()->baseDataTable($elementalClass));
-			$fields = $this->getSchemaManager()->fieldList($baseTable);
-			if (array_key_exists('ShowInSearch', $fields)) {
-				$extraFilters[$elementalClass] = " AND {$baseTable}.ShowInSearch <> 0";
-			}
-			else {
-				$extraFilters[$elementalClass] = '';
-			}
+        $boolean = '';
+        if ($booleanSearch) {
+            $boolean = "IN BOOLEAN MODE";
+        }
 
+        if ($extraFilter) {
+            $extraFilters[$documentClass] = " AND $extraFilter";
 
-		}
+            if ($alternativeFileFilter) {
+                $extraFilters[$fileClass] = " AND $alternativeFileFilter";
+            } else {
+                $extraFilters[$fileClass] = $extraFilters[$documentClass];
+            }
+        }
 
-		$boolean = '';
-		if ($booleanSearch) {
-			$boolean = "IN BOOLEAN MODE";
-		}
+        // File.ShowInSearch was added later, keep the database driver backwards compatible
+        // by checking for its existence first
+        $fileTable = DataObject::getSchema()->tableName($fileClass);
+        $fields = $this->getSchemaManager()->fieldList($fileTable);
+        if (array_key_exists('ShowInSearch', $fields)) {
+            $extraFilters[$fileClass] .= " AND ShowInSearch <> 0";
+        }
 
-		if ($extraFilter) {
-			$extraFilters[$pageClass] = " AND $extraFilter";
-			if ($alternativeFileFilter) {
-				$extraFilters[$fileClass] = " AND $alternativeFileFilter";
-			} else {
-				$extraFilters[$fileClass] = $extraFilters[$pageClass];
-			}
-		}
+        $limit = (int)$start . ", " . (int)$pageLength;
 
-		// Always ensure that only pages with ShowInSearch = 1 can be searched
-		$extraFilters[$pageClass] .= " AND ShowInSearch <> 0";
-
-		// File.ShowInSearch was added later, keep the database driver backwards compatible
-		// by checking for its existence first
-		$fileTable = DataObject::getSchema()->tableName($fileClass);
-		$fields = $this->getSchemaManager()->fieldList($fileTable);
-		if (array_key_exists('ShowInSearch', $fields)) {
-			$extraFilters[$fileClass] .= " AND ShowInSearch <> 0";
-		}
-
-		$limit = (int)$start . ", " . (int)$pageLength;
-
-		$notMatch = $invertedMatch
-			? "NOT "
-			: "";
-
-		if ($keywords) {
-			$match[$pageClass] = "
-				MATCH (Title, MenuTitle, Content, MetaDescription) AGAINST ('$keywords' $boolean)
-				+ MATCH (Title, MenuTitle, Content, MetaDescription) AGAINST ('$htmlEntityKeywords' $boolean)
+        $notMatch = $invertedMatch
+            ? "NOT "
+            : "";
+        if ($keywords) {
+            $match[$documentClass] = "
+				MATCH (Title, Content) AGAINST ('$keywords' $boolean)
+				+ MATCH (Title, Content) AGAINST ('$htmlEntityKeywords' $boolean)
 			";
-			$fileClassSQL = Convert::raw2sql($fileClass);
-			$match[$fileClass] = "MATCH (Name, Title) AGAINST ('$keywords' $boolean) AND ClassName = '$fileClassSQL'";
+            $fileClassSQL = Convert::raw2sql($fileClass);
+            $match[$fileClass] = "MATCH (Name, Title) AGAINST ('$keywords' $boolean) AND ClassName = '$fileClassSQL'";
 
-			// We make the relevance search by converting a boolean mode search into a normal one
-			$relevanceKeywords = str_replace(array('*', '+', '-'), '', $keywords);
-			$htmlEntityRelevanceKeywords = str_replace(array('*', '+', '-'), '', $htmlEntityKeywords);
-			$relevance[$pageClass] = "MATCH (Title, MenuTitle, Content, MetaDescription) "
-				. "AGAINST ('$relevanceKeywords') "
-				. "+ MATCH (Title, MenuTitle, Content, MetaDescription) AGAINST ('$htmlEntityRelevanceKeywords')";
-			$relevance[$fileClass] = "MATCH (Name, Title) AGAINST ('$relevanceKeywords')";
+            // We make the relevance search by converting a boolean mode search into a normal one
+            $relevanceKeywords = str_replace(array('*', '+', '-'), '', $keywords);
+            $htmlEntityRelevanceKeywords = str_replace(array('*', '+', '-'), '', $htmlEntityKeywords);
+            $relevance[$documentClass] = "MATCH (Title, Content) "
+                . "AGAINST ('$relevanceKeywords') "
+                . "+ MATCH (Title, Content) AGAINST ('$htmlEntityRelevanceKeywords')";
+            $relevance[$fileClass] = "MATCH (Name, Title) AGAINST ('$relevanceKeywords')";
+        } else {
+            $relevance[$documentClass] = $relevance[$fileClass] = 1;
+            $match[$documentClass] = $match[$fileClass] = "1 = 1";
+        }
 
+        // Generate initial DataLists and base table names
+        $lists = array();
+        $sqlTables = array($documentClass => '', $fileClass => '');
+        foreach ($classesToSearch as $class) {
+            $lists[$class] = DataList::create($class)->where($notMatch . $match[$class] . $extraFilters[$class]);
+            $sqlTables[$class] = '"' . DataObject::getSchema()->tableName($class) . '"';
+        }
 
-			if($searchElemental) foreach ($elementalRelatedClasses as $relatedFromClass => $relation) {
-				$matches = [];
-				$relevances = [];
+        $charset = static::config()->get('charset');
 
-				$relatedFromBaseTable = self::versioned_tables($relatedFromClass, DataObject::getSchema()->baseDataTable($relatedFromClass));
-				$relatedTableFields = $this->getSchemaManager()->fieldList($relatedFromBaseTable);
-				if(array_key_exists('Title', $relatedTableFields)) {
-					$matches[] = "MATCH (\"$relatedFromBaseTable\".\"Title\") AGAINST ('$keywords' $boolean)"
-						. " + MATCH (\"$relatedFromBaseTable\".\"Title\") AGAINST ('$htmlEntityKeywords' $boolean)";
+        // Make column selection lists
+        $select = array(
+            $documentClass => array(
+                "ClassName" => "Type",
+                "ID" => "OriginID",
+                "ParentID" => "_{$charset}''",
+                "Title",
+                "MenuTitle" => "_{$charset}''",
+                "URLSegment" => "_{$charset}''",
+                "Content",
+                "LastEdited" => "_{$charset}''",
+                "Created" => "_{$charset}''",
+                "Name" => "_{$charset}''",
+                "Relevance" => $relevance[$documentClass],
+                "CanViewType" => "NULL"
+            ),
+            $fileClass => array(
+                "ClassName",
+                "{$sqlTables[$fileClass]}.\"ID\"",
+                "ParentID",
+                "Title",
+                "MenuTitle" => "_{$charset}''",
+                "URLSegment" => "_{$charset}''",
+                "Content" => "_{$charset}''",
+                "LastEdited",
+                "Created",
+                "Name",
+                "Relevance" => $relevance[$fileClass],
+                "CanViewType" => "NULL"
+            ),
+        );
 
-					$relevances[] = "MATCH (\"$relatedFromBaseTable\".\"Title\") AGAINST ('$relevanceKeywords' $boolean)"
-						. " + MATCH (\"$relatedFromBaseTable\".\"Title\") AGAINST ('$htmlEntityRelevanceKeywords' $boolean)";
-				}
+        // Process and combine queries
+        $querySQLs = array();
+        $queryParameters = array();
+        $totalCount = 0;
+        foreach ($lists as $class => $list) {
+            /** @var SQLSelect $query */
+            $query = $list->dataQuery()->query();
 
+            // There's no need to do all that joining
+            $query->setFrom($sqlTables[$class]);
+            $query->setSelect($select[$class]);
+            $query->setOrderBy(array());
 
+            $querySQLs[] = $query->sql($parameters);
+            $queryParameters = array_merge($queryParameters, $parameters);
 
-				foreach (FulltextSearchable::get_elemental_columns(true) as $elementalColumns){
-					$matches[] = "MATCH ("
-						. implode(', ', $elementalColumns)
-						. ") AGAINST ('$keywords' $boolean)"
-						. " + MATCH ("
-						. implode(', ', $elementalColumns)
-						. ") AGAINST ('$htmlEntityKeywords' $boolean)";
+            $totalCount += $query->unlimitedRowCount();
+        }
+        $fullQuery = implode(" UNION ", $querySQLs) . " ORDER BY $sortBy LIMIT $limit";
 
+        // Get records
+        $records = $this->preparedQuery($fullQuery, $queryParameters);
 
-					$relevances[] = "(MATCH ("
-						. implode(', ', $elementalColumns)
-						. ") AGAINST ('$relevanceKeywords')"
-						. " + MATCH ("
-						. implode(', ', $elementalColumns)
-						. ") AGAINST ('$htmlEntityRelevanceKeywords'))";
-				}
+        $objects = array();
 
-				$relevance[$relatedFromClass] = implode(' + ', $relevances);
-				$match[$relatedFromClass] = implode(' + ', $matches);
+        foreach ($records as $record) {
+            $objects[] = DataList::create($record['ClassName'])->byID($record['ID']);
+        }
 
-			}
+        $list = new PaginatedList(new ArrayList($objects));
+        $list->setPageStart($start);
+        $list->setPageLength($pageLength);
+        $list->setTotalItems($totalCount);
 
-		} else {
-			$relevance[$pageClass] = $relevance[$fileClass] = 1;
-			$match[$pageClass] = $match[$fileClass] = "1 = 1";
+        // The list has already been limited by the query above
+        $list->setLimitItems(false);
 
-			if($searchElemental) foreach ($elementalRelatedClasses as $elementalClass => $relation) {
-				$relevance[$elementalClass] = 1;
-				$match[$elementalClass] = "1 = 1";
-			}
-
-		}
-
-		// Generate initial DataLists and base table names
-		$lists = array();
-		$sqlTables = array($pageClass => '', $fileClass => '');
-		foreach ($classesToSearch as $class) {
-			if($class != BaseElement::class) {
-				$lists[$class] = DataList::create($class)->where($notMatch . $match[$class] . $extraFilters[$class]);
-				$sqlTables[$class] = '"' . DataObject::getSchema()->tableName($class) . '"';
-			}
-		}
-
-		$elementalAreaTable = MySQLDatabase::versioned_tables(ElementalArea::class,
-			DataObject::getSchema()->baseDataTable(ElementalArea::class));
-		$baseElementTable = MySQLDatabase::versioned_tables(BaseElement::class,
-			DataObject::getSchema()->baseDataTable(BaseElement::class));
-
-		foreach ($elementalRelatedClasses as $elementalClass => $relations) {
-			$joinOn = [];
-			foreach ($relations as $relation) {
-				$joinOn[] = "{$elementalAreaTable}.ID = {$relation}ID";
-			}
-			$list = DataList::create($elementalClass)
-				->leftJoin("{$elementalAreaTable}", implode(' OR ', $joinOn))
-				->leftJoin("{$baseElementTable}", "{$baseElementTable}.ParentID = {$elementalAreaTable}.ID");
-
-
-			foreach (FulltextSearchable::get_elemental_classes() as $currentClass) {
-				$elementTable = MySQLDatabase::versioned_tables($currentClass,
-					DataObject::getSchema()->tableName($currentClass));
-				if($elementTable != $baseElementTable) {
-					$list = $list->leftJoin("$elementTable", '"' . $elementTable . '"."ID" = "' . $baseElementTable . '"."ID"');
-				}
-			}
-
-			$list = $list->where($notMatch . $match[$elementalClass] . $extraFilters[$elementalClass]);
-
-			$lists[$elementalClass] = $list;
-			$sqlTables[$elementalClass] = '"' . DataObject::getSchema()->tableName($elementalClass) . '"';
-		}
-
-
-		$charset = static::config()->get('charset');
-
-		// Make column selection lists
-		$select = array(
-			$pageClass => array(
-				"ClassName", "{$sqlTables[$pageClass]}.\"ID\"", "ParentID",
-				"Title", "MenuTitle", "URLSegment", "Content",
-				"LastEdited", "Created",
-				"Name" => "_{$charset}''",
-				"Relevance" => $relevance[$pageClass], "CanViewType"
-			),
-			$fileClass => array(
-				"ClassName", "{$sqlTables[$fileClass]}.\"ID\"", "ParentID",
-				"Title", "MenuTitle" => "_{$charset}''", "URLSegment" => "_{$charset}''", "Content" => "_{$charset}''",
-				"LastEdited", "Created",
-				"Name",
-				"Relevance" => $relevance[$fileClass], "CanViewType" => "NULL"
-			),
-		);
-
-
-		foreach ($elementalRelatedClasses as $elementalClass => $relations) {
-
-			$baseTable = DataObject::getSchema()->baseDataTable($elementalClass);
-			$fields = $this->getSchemaManager()->fieldList($baseTable);
-
-			$select[$elementalClass] = [
-				"\"$baseTable\".\"ClassName\" AS \"ClassName\"",
-				"\"$baseTable\".\"ID\" AS \"ID\"",
-			];
-
-			$selectableFields = [
-				'ParentID',
-				'Title',
-				'MenuTitle',
-				'URLSegment',
-				'Content',
-				'LastEdited',
-				'Created',
-				'Name'
-			];
-
-			foreach ($selectableFields as $selectableField) {
-				if(array_key_exists($selectableField, $fields)) {
-					$select[$elementalClass][] = "\"$baseTable\".\"{$selectableField}\" AS \"{$selectableField}\"";
-				}
-				else {
-					$select[$elementalClass][$selectableField] = "_{$charset}''";
-				}
-			}
-			$select[$elementalClass]['Relevance'] = $relevance[$elementalClass];
-			$select[$elementalClass]['CanViewType'] = "_{$charset}''";
-		}
-
-
-		// Process and combine queries
-		$querySQLs = array();
-		$queryParameters = array();
-		$totalCount = 0;
-		foreach ($lists as $class => $list) {
-			/** @var SQLSelect $query */
-			$query = $list->dataQuery()->query();
-
-
-			// There's no need to do all that joining
-			// $query->setFrom($sqlTables[$class]);
-			$query->setSelect($select[$class]);
-			$query->setOrderBy(array());
-
-			$querySQLs[] = $query->sql($parameters);
-			$queryParameters = array_merge($queryParameters, $parameters);
-
-		}
-
-		$countQuery = "SELECT COUNT(ID) AS Rows FROM ( " . implode(" UNION ", $querySQLs) . ") SEARCH_TABLES";
-		$fullQuery = implode(" UNION ", $querySQLs) . " ORDER BY $sortBy LIMIT $limit";
-
-
-		$totalCount = $this->preparedQuery($countQuery, $queryParameters)->value();
-		$records = $this->preparedQuery($fullQuery, $queryParameters);
-
-		$objects = array();
-		foreach ($records as $record) {
-			$objects[] = new $record['ClassName']($record);
-		}
-		$list = new PaginatedList(new ArrayList($objects));
-		$list->setPageStart($start);
-		$list->setPageLength($pageLength);
-		$list->setTotalItems($totalCount);
-
-		// The list has already been limited by the query above
-		$list->setLimitItems(false);
-
-		return $list;
-
-	}
-
-	public static function versioned_tables($class, $table)
-	{
-		if(ClassInfo::exists('SilverStripe\\Versioned\\Versioned') && $class::has_extension('SilverStripe\\Versioned\\Versioned')) {
-			if(Versioned::get_stage() == 'Live') {
-				return $table . '_Live';
-			}
-		}
-		return $table;
-	}
+        return $list;
+    }
 
 }

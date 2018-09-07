@@ -3,10 +3,14 @@ Name: elemental-search
 ---
 DNADesign\Elemental\Models\BaseElement:
   extensions:
-    - SilverStripers\ElementalSearch\Extensions\ElementSearchExtension
-DNADesign\Elemental\Models\ElementContent:
+    - SilverStripers\ElementalSearch\Extensions\ElementDocumentGeneratorExtension
+SilverStripe\CMS\Model\SiteTree:
   extensions:
-    - SilverStripers\ElementalSearch\Extensions\ElementContentExtension
+    - SilverStripers\ElementalSearch\Extensions\SiteTreeDocumentGenerator
+
+SilverStripe\CMS\Controllers\CMSPageEditController:
+  extensions:
+    - SilverStripers\ElementalSearch\Extensions\CMSMainExtension
 
 SilverStripe\Core\Injector\Injector:
   MySQLPDODatabase:

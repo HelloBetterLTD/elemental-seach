@@ -10,16 +10,21 @@
 namespace SilverStripers\ElementalSearch\CMS\Search;
 
 use BadMethodCallException;
-use DNADesign\Elemental\Models\BaseElement;
 use SilverStripe\Assets\File;
-use SilverStripe\CMS\Model\SiteTree;
+use SilverStripe\CMS\Search\SearchForm as SS_SearchForm;
+use SilverStripers\ElementalSearch\Model\SearchDocument;
 
-class SearchForm extends \SilverStripe\CMS\Search\SearchForm
+class SearchForm extends SS_SearchForm
 {
+
+    protected $classesToSearch = array(
+        SearchDocument::class,
+        File::class
+    );
 
 	public function classesToSearch($classes)
 	{
-		$supportedClasses = array(SiteTree::class, File::class, BaseElement::class);
+		$supportedClasses = array(SearchDocument::class, File::class);
 
 		$illegalClasses = array_diff($classes, $supportedClasses);
 		if ($illegalClasses) {
