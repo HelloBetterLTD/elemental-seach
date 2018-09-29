@@ -3,9 +3,8 @@
 ## Introduction
 
 This module integrates [dnadesign/silverstripe-elemental](https://github.com/dnadesign/silverstripe-elemental)
-into [SilverStripe's Fulltext searc](https://docs.silverstripe.org/en/4/developer_guides/search/fulltextsearch/) 
-and provides extensions over for SilverStriper's core classes to create database indexes, search forms, and perform full text 
-search over the elemetal blocks connecting to various elemental area / areas. 
+into [SilverStripe's Fulltext search](https://docs.silverstripe.org/en/4/developer_guides/search/fulltextsearch/) 
+and provides extensions to create search documents for your Pages or any data objects which you need to work with the full text search. The module comes in handy for systems where you dont want to make use of complex search systems like Solr. 
 
 ## Requirements
 
@@ -26,16 +25,7 @@ Ensure you run `dev/build?flush=1` to build your database and flush your cache.
 
 ### Enable Full text search 
 
-To enable Full text search add the following code to your projects `_config.php` file
-
-```
-<?php
-
-use SilverStripers\ElementalSearch\ORM\Search\FulltextSearchable;
-
-FulltextSearchable::enable();
-
-```
+The module once installed elables Full text search by itself on the SearchDocument dataobject. There are no additional configs you want to use.
 
 ### Create a search form 
 
@@ -66,24 +56,28 @@ class  MyController extends Controller {
 
 ```
 
-### Specify Fulltext search fields. 
+### Include objects to search. 
 
-On eh of the Elemental classes add a config which specify the fields which needs to be searched for. 
+Any data object you'd like to include in the search has to be decorated with the `SilverStripers\ElementalSearch\Extensions\SearchDocumentGenerator`. After doing this this extension will make a search document each time when the data object is created, updated, and when deleted it will delete the search document. For Versioned data objects it will only create search documents when the object is published. 
+
+### Specify which contents needs to be searched. 
+
+For the webpages you have the option to configure which dom elements to include in the search. Eg: You wont need it to cache the whole page and run search on certain info which duplicates over the site like the navigations. 
 
 ```
-private static $fulltext_fields = [
-  'MyField',
-  'MyField2'
-];
+SilverStripers\ElementalSearch\Model\SearchDocument:
+    search_x_path:
+        - main-content
 ```
+
+The above settings will render the page and exract content within the `main-content` DOM node, and create the document. 
+
 
 ## How it works 
 
-The module overrides the MySQLDatabase and the search result queries. It joins the tables of the objects which has ElementalAreas and the Elemental classes to the related from tables. 
+The module adds a new DataObject `SearchDocument`. This gets created when each of the search enabled pages. And it is how it creates aggregated search results. 
 
-Eg: Page is joined to ElementalArea joined to Element 
-
-This performs match and relevance queries over the tables to provide results lists, and return the matches. 
+The module overrides the MySQLDatabase and the search result queries.
 
 ## Reporting Issues
 
