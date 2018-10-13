@@ -12,7 +12,7 @@
     "minimum-stability": "dev",
 	"prefer-stable": true,
     "require": {
-		"dnadesign/silverstripe-elemental": "^2"
+		"dnadesign/silverstripe-elemental": "^3"
     },
     "autoload": {
         "psr-4": {
