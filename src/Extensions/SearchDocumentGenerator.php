@@ -13,16 +13,17 @@ use \Exception;
 use SilverStripe\ORM\DataExtension;
 use SilverStripe\ORM\DataObject;
 use SilverStripe\Versioned\Versioned;
+use SilverStripe\View\TemplateGlobalProvider;
 use SilverStripers\ElementalSearch\Model\SearchDocument;
 
-class SearchDocumentGenerator extends DataExtension
+class SearchDocumentGenerator extends DataExtension implements TemplateGlobalProvider
 {
 
     public function getGenerateSearchLink()
     {
         $owner = $this->owner;
         if(method_exists($owner, 'Link')) {
-            return $owner->Link();
+            return $owner->Link() . '&SearchGen=1';
         }
         $class = get_class($owner);
         throw new Exception(
@@ -111,6 +112,18 @@ class SearchDocumentGenerator extends DataExtension
         ])->first();
         return $doc;
     }
+
+    public static function is_search()
+	{
+		return isset($_REQUEST['SearchGen']) ? true : false;
+	}
+
+    public static function get_template_global_variables()
+	{
+		return [
+			'IsSearch' => 'is_search'
+		];
+	}
 
 
 }

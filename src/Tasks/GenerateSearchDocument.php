@@ -40,8 +40,15 @@ class GenerateSearchDocument extends BuildTask
         $classes = $this->getAllSearchDocClasses();
         foreach ($classes as $class) {
             foreach ($list = DataList::create($class) as $record) {
-                echo 'Making record for ' . $record->getTitle() . '<br>';
-                SearchDocumentGenerator::make_document_for($record);
+				echo sprintf(
+						'Making record for %s type %s, link %s',
+						$record->getTitle(),
+						$record->ClassName,
+						$record->getGenerateSearchLink()) . '<br>';
+				try {
+					SearchDocumentGenerator::make_document_for($record);
+				} catch (Exception $e) {
+				}
             }
         }
         echo 'Completed';

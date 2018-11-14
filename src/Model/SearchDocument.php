@@ -80,7 +80,9 @@ class SearchDocument extends DataObject
         }
 
         $this->Title = $origin->getTitle();
-        $this->Content = $contents;
+        if($contents) {
+			$this->Content = $contents;
+		}
         $this->write();
         SSViewer::set_themes($themes);
         Versioned::set_reading_mode($mode);
