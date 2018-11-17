@@ -23,7 +23,11 @@ class SearchDocumentGenerator extends DataExtension implements TemplateGlobalPro
     {
         $owner = $this->owner;
         if(method_exists($owner, 'Link')) {
-            return $owner->Link() . '&SearchGen=1';
+            $link = $owner->Link();
+            if(strpos($link, '?') !== false) {
+                return $link . '&SearchGen=1';
+            }
+            return $link . '?SearchGen=1';
         }
         $class = get_class($owner);
         throw new Exception(
