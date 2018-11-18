@@ -10,6 +10,7 @@
 
 namespace SilverStripers\ElementalSearch\Model;
 
+use GuzzleHttp\Client;
 use SilverStripe\Control\Director;
 use SilverStripe\ORM\DataList;
 use SilverStripe\ORM\DataObject;
@@ -48,44 +49,41 @@ class SearchDocument extends DataObject
         $origin = $this->Origin();
         $searchLink = $origin->getGenerateSearchLink();
 
-        $mode = Versioned::get_reading_mode();
-        $themes = SSViewer::get_themes();
-        SSViewer::set_themes(SSViewer::config()->uninherited('themes'));
-        Versioned::set_reading_mode('Stage.Stage');
+        $client = new Client();
+        $res = $client->request('GET', $searchLink);
+        if($res->getStatusCode() == 200) {
+            $body = $res->getBody();
 
-        $response = Director::test($searchLink);
-        $body = $response->getBody();
-
-        $x_path = $origin->config()->get('search_x_path');
-        if(!$x_path) {
-            $x_path = self::config()->get('search_x_path');
-        }
-
-        if($x_path) {
-            $domDoc = new \DOMDocument();
-            @$domDoc->loadHTML($body);
-
-            $finder = new \DOMXPath($domDoc);
-            $nodes = $finder->query("//*[contains(@class, '$x_path')]");
-            $nodeValues = [];
-            if($nodes->length) {
-                foreach ($nodes as $node) {
-                    $nodeValues[] = $node->nodeValue;
-                }
+            $x_path = $origin->config()->get('search_x_path');
+            if(!$x_path) {
+                $x_path = self::config()->get('search_x_path');
             }
-            $contents = implode("\n\n", $nodeValues);
-        }
-        else {
-            $contents = strip_tags($body);
+
+            if($x_path) {
+                $domDoc = new \DOMDocument();
+                @$domDoc->loadHTML($body);
+
+                $finder = new \DOMXPath($domDoc);
+                $nodes = $finder->query("//*[contains(@class, '$x_path')]");
+                $nodeValues = [];
+                if($nodes->length) {
+                    foreach ($nodes as $node) {
+                        $nodeValues[] = $node->nodeValue;
+                    }
+                }
+                $contents = implode("\n\n", $nodeValues);
+            }
+            else {
+                $contents = strip_tags($body);
+            }
+
+            $this->Title = $origin->getTitle();
+            if($contents) {
+                $this->Content = $contents;
+            }
+            $this->write();
         }
 
-        $this->Title = $origin->getTitle();
-        if($contents) {
-			$this->Content = $contents;
-		}
-        $this->write();
-        SSViewer::set_themes($themes);
-        Versioned::set_reading_mode($mode);
 
     }
 

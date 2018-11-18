@@ -10,6 +10,7 @@
 namespace SilverStripers\ElementalSearch\Extensions;
 
 use \Exception;
+use SilverStripe\Control\Director;
 use SilverStripe\ORM\DataExtension;
 use SilverStripe\ORM\DataObject;
 use SilverStripe\Versioned\Versioned;
@@ -23,7 +24,7 @@ class SearchDocumentGenerator extends DataExtension implements TemplateGlobalPro
     {
         $owner = $this->owner;
         if(method_exists($owner, 'Link')) {
-            $link = $owner->Link();
+            $link = Director::absoluteURL($owner->Link());
             if(strpos($link, '?') !== false) {
                 return $link . '&SearchGen=1';
             }
