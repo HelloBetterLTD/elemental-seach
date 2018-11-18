@@ -27,6 +27,7 @@ class SearchDocumentGenerator extends DataExtension implements TemplateGlobalPro
             $mode = Versioned::get_reading_mode();
             Versioned::set_reading_mode('Stage.Live');
             $link = Director::absoluteURL($owner->Link());
+            $link = str_replace('stage=Stage', '', $link);
             Versioned::set_reading_mode($mode);
             if(strpos($link, '?') !== false) {
                 return $link . '&SearchGen=1';
