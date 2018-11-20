@@ -49,40 +49,41 @@ class SearchDocument extends DataObject
         $origin = $this->Origin();
         $searchLink = $origin->getGenerateSearchLink();
 
-        $client = new Client();
-        $res = $client->request('GET', $searchLink);
-        if($res->getStatusCode() == 200) {
-            $body = $res->getBody();
+        try {
+            $client = new Client();
+            $res = $client->request('GET', $searchLink);
+            if ($res->getStatusCode() == 200) {
+                $body = $res->getBody();
 
-            $x_path = $origin->config()->get('search_x_path');
-            if(!$x_path) {
-                $x_path = self::config()->get('search_x_path');
-            }
-
-            if($x_path) {
-                $domDoc = new \DOMDocument();
-                @$domDoc->loadHTML($body);
-
-                $finder = new \DOMXPath($domDoc);
-                $nodes = $finder->query("//*[contains(@class, '$x_path')]");
-                $nodeValues = [];
-                if($nodes->length) {
-                    foreach ($nodes as $node) {
-                        $nodeValues[] = $node->nodeValue;
-                    }
+                $x_path = $origin->config()->get('search_x_path');
+                if (!$x_path) {
+                    $x_path = self::config()->get('search_x_path');
                 }
-                $contents = implode("\n\n", $nodeValues);
-            }
-            else {
-                $contents = strip_tags($body);
-            }
 
-            $this->Title = $origin->getTitle();
-            if($contents) {
-                $this->Content = $contents;
+                if ($x_path) {
+                    $domDoc = new \DOMDocument();
+                    @$domDoc->loadHTML($body);
+
+                    $finder = new \DOMXPath($domDoc);
+                    $nodes = $finder->query("//*[contains(@class, '$x_path')]");
+                    $nodeValues = [];
+                    if ($nodes->length) {
+                        foreach ($nodes as $node) {
+                            $nodeValues[] = $node->nodeValue;
+                        }
+                    }
+                    $contents = implode("\n\n", $nodeValues);
+                } else {
+                    $contents = strip_tags($body);
+                }
+
+                $this->Title = $origin->getTitle();
+                if ($contents) {
+                    $this->Content = $contents;
+                }
+                $this->write();
             }
-            $this->write();
-        }
+        } catch(\Exception $e) {}
 
 
     }
