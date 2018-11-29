@@ -52,7 +52,9 @@ class ElementDocumentGeneratorExtension extends SearchDocumentGenerator
         /* @var $element BaseElement */
         $element = $this->owner;
         $page = $element->getPage();
-        self::make_document_for($page);
+        if($page) {
+            self::make_document_for($page);
+        }
     }
 
 }
