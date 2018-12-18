@@ -10,6 +10,7 @@
 
 namespace SilverStripers\ElementalSearch\Model;
 
+use DNADesign\Elemental\Models\ElementalArea;
 use GuzzleHttp\Client;
 use SilverStripe\Control\Director;
 use SilverStripe\ORM\DataList;
@@ -49,6 +50,89 @@ class SearchDocument extends DataObject
         $origin = $this->Origin();
         $searchLink = $origin->getGenerateSearchLink();
 
+        $oldThemes = SSViewer::get_themes();
+        SSViewer::set_themes(SSViewer::config()->get('themes'));
+
+        try {
+            $hasElemental = false;
+            foreach ($origin->hasOne() as $key => $class) {
+                if($class == ElementalArea::class) {
+                    $hasElemental = true;
+                }
+            }
+
+            $output = [];
+            if($hasElemental) {
+                foreach ($origin->hasOne() as $key => $class) {
+                    if ($class !== ElementalArea::class) {
+                        continue;
+                    }
+                    /** @var ElementalArea $area */
+                    $area = $origin->$key();
+                    if ($area && $area->exists()) {
+                        $output[] = $area->forTemplate();
+                    }
+                }
+            }
+            else {
+                $output[] = Director::test($searchLink);
+            }
+
+            // any fields mark to search
+            if($origin->config()->get('full_text_fields')) {
+                foreach ($origin->config()->get('full_text_fields') as $fieldName) {
+                    $dbObject = $origin->dbObject($fieldName);
+                    if($dbObject) {
+                        $output[] = $dbObject->forTemplate();
+                    }
+                }
+            }
+
+            $html = implode("\n", $output);
+            $x_path = $origin->config()->get('search_x_path');
+            if (!$x_path) {
+                $x_path = self::config()->get('search_x_path');
+            }
+            if ($x_path) {
+                $domDoc = new \DOMDocument();
+                @$domDoc->loadHTML($html);
+
+                $finder = new \DOMXPath($domDoc);
+                $nodes = $finder->query("//*[contains(@class, '$x_path')]");
+                $nodeValues = [];
+                if ($nodes->length) {
+                    foreach ($nodes as $node) {
+                        $nodeValues[] = $node->nodeValue;
+                    }
+                }
+                $contents = implode("\n\n", $nodeValues);
+            } else {
+                $contents = strip_tags($html);
+            }
+
+
+            $this->Title = $origin->getTitle();
+            if ($contents) {
+                $contents = preg_replace("/(^[\r\n]*|[\r\n]+)[\s\t]*[\r\n]+/", "\n", $contents);
+                $this->Content = $contents;
+            }
+            $this->write();
+        } catch (\Exception $e) {
+        } finally {
+            // Reset theme if an exception occurs, if you don't have a
+            // try / finally around code that might throw an Exception,
+            // CMS layout can break on the response. (SilverStripe 4.1.1)
+            SSViewer::set_themes($oldThemes);
+        }
+        return implode($output);
+
+
+
+
+
+        /*
+        $searchLink = $origin->getGenerateSearchLink();
+
         try {
             $client = new Client();
             $res = $client->request('GET', $searchLink);
@@ -84,6 +168,7 @@ class SearchDocument extends DataObject
                 $this->write();
             }
         } catch(\Exception $e) {}
+        */
 
 
     }
