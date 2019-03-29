@@ -54,15 +54,24 @@ class SearchDocument extends DataObject
         SSViewer::set_themes(SSViewer::config()->get('themes'));
 
         try {
-            $hasElemental = false;
-            foreach ($origin->hasOne() as $key => $class) {
-                if($class == ElementalArea::class) {
-                    $hasElemental = true;
+            $bypassElemental = $origin->config()->get('use_only_x_path');
+            if (!$bypassElemental) {
+                $bypassElemental = self::config()->get('use_only_x_path');
+            }
+
+            if (!$bypassElemental) {
+                $useElemental = false;
+                foreach ($origin->hasOne() as $key => $class) {
+                    if($class == ElementalArea::class) {
+                        $useElemental = true;
+                    }
                 }
+            } else {
+                $useElemental = false;
             }
 
             $output = [];
-            if($hasElemental) {
+            if($useElemental) {
                 foreach ($origin->hasOne() as $key => $class) {
                     if ($class !== ElementalArea::class) {
                         continue;
@@ -104,6 +113,8 @@ class SearchDocument extends DataObject
                     foreach ($nodes as $node) {
                         $nodeValues[] = $node->nodeValue;
                     }
+                } else {
+                    $contents = strip_tags($html);
                 }
                 $contents = implode("\n\n", $nodeValues);
             } else {
