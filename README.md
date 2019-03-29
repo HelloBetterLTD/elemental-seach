@@ -70,6 +70,13 @@ SilverStripers\ElementalSearch\Model\SearchDocument:
         - main-content
 ```
 
+In the situation where you have content outside of elemental elements that you want to include in the search.
+
+```
+SilverStripers\ElementalSearch\Model\SearchDocument:
+    only_use_x_path: true
+```
+
 The above settings will render the page and exract content within the `main-content` DOM node, and create the document. 
 
 
