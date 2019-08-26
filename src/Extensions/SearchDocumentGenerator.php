@@ -19,7 +19,9 @@ use SilverStripers\ElementalSearch\Model\SearchDocument;
 
 class SearchDocumentGenerator extends DataExtension implements TemplateGlobalProvider
 {
-
+   
+    private static $prevent_search_documents = false;
+    
     public function getGenerateSearchLink()
     {
         $owner = $this->owner;
@@ -40,10 +42,14 @@ class SearchDocumentGenerator extends DataExtension implements TemplateGlobalPro
         );
     }
 
-
+    public static function prevent_search_documents($prevent = true)
+    {
+        self::$prevent_search_documents = $prevent;
+    }
+    
     public function onAfterWrite()
     {
-        if(!self::is_versioned($this->owner)) {
+        if(!self::is_versioned($this->owner) && !self::$prevent_search_documents) {
             self::make_document_for($this->owner);
         }
     }
@@ -57,7 +63,9 @@ class SearchDocumentGenerator extends DataExtension implements TemplateGlobalPro
 
     public function onAfterPublish()
     {
-        self::make_document_for($this->owner);
+        if (self::$prevent_search_documents) {
+            self::make_document_for($this->owner);
+        }
     }
 
     public function onAfterArchive()
