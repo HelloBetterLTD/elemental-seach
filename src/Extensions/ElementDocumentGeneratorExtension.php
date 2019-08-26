@@ -34,7 +34,9 @@ class ElementDocumentGeneratorExtension extends SearchDocumentGenerator
 
     public function onAfterPublish()
     {
-        $this->makeSearchDocumentForPage();
+        if (!SearchDocumentGenerator::search_documents_prevented()) {
+            $this->makeSearchDocumentForPage();
+        }
     }
 
     public function onBeforeArchive()
@@ -44,7 +46,9 @@ class ElementDocumentGeneratorExtension extends SearchDocumentGenerator
 
     public function onAfterArchive()
     {
-        $this->makeSearchDocumentForPage();
+        if (!SearchDocumentGenerator::search_documents_prevented()) {
+            $this->makeSearchDocumentForPage();
+        }
     }
 
     public function makeSearchDocumentForPage()
