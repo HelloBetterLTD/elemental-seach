@@ -63,7 +63,7 @@ class SearchDocumentGenerator extends DataExtension implements TemplateGlobalPro
 
     public function onAfterPublish()
     {
-        if (self::$prevent_search_documents) {
+        if (!self::$prevent_search_documents) {
             self::make_document_for($this->owner);
         }
     }
