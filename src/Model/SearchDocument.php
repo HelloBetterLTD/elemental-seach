@@ -48,6 +48,10 @@ class SearchDocument extends DataObject
     public function makeSearchContent()
     {
         $origin = $this->Origin();
+        if (!$origin) {
+            return;
+        }
+
         $searchLink = $origin->getGenerateSearchLink();
 
         $oldThemes = SSViewer::get_themes();
