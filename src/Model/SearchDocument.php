@@ -83,7 +83,7 @@ class SearchDocument extends DataObject
                     /** @var ElementalArea $area */
                     $area = $origin->$key();
                     if ($area && $area->exists()) {
-                        $output[] = $area->forTemplate();
+                        $output[] = $area->forTemplate()->forTemplate();
                     }
                 }
             } else {
