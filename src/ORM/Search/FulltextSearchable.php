@@ -11,11 +11,16 @@ namespace SilverStripers\ElementalSearch\ORM\Search;
 use Exception;
 use SilverStripe\Assets\File;
 use SilverStripe\CMS\Controllers\ContentController;
+use SilverStripe\ORM\DataExtension;
 use SilverStripers\ElementalSearch\Model\SearchDocument;
 use SilverStripe\ORM\Search\FulltextSearchable as SS_FulltextSearchable;
 
-class FulltextSearchable extends SS_FulltextSearchable
+class FulltextSearchable extends DataExtension
 {
+
+    protected $searchFields;
+
+    protected static $searchable_classes;
 
     public static function enable($searchableClasses = [SearchDocument::class, File::class])
     {
@@ -46,4 +51,34 @@ class FulltextSearchable extends SS_FulltextSearchable
         }
     }
 
+    public function __construct($searchFields = array())
+    {
+        parent::__construct();
+        if (is_array($searchFields)) {
+            $this->searchFields = $searchFields;
+        } else {
+            $this->searchFields = explode(',', $searchFields);
+            foreach ($this->searchFields as &$field) {
+                $field = trim($field);
+            }
+        }
+    }
+
+    public static function get_extra_config($class, $extensionClass, $args)
+    {
+        return array(
+            'indexes' => array(
+                'SearchFields' => array(
+                    'type' => 'fulltext',
+                    'name' => 'SearchFields',
+                    'columns' => $args,
+                )
+            )
+        );
+    }
+
+    public static function get_searchable_classes()
+    {
+        return self::$searchable_classes;
+    }
 }
