@@ -30,7 +30,7 @@ class SearchDocument extends DataObject
 
     private static $searchable_fields = [
         'Title',
-        'Content'
+        'Content',
     ];
 
     private static $table_name = 'SearchDocument';
@@ -58,7 +58,7 @@ class SearchDocument extends DataObject
         SSViewer::set_themes(SSViewer::config()->get('themes'));
 
         try {
-            $bypassElemental = $origin->config()->get('use_only_x_path');
+            $bypassElemental = self::config()->get('use_only_x_path');
             if (!$bypassElemental) {
                 $bypassElemental = self::config()->get('use_only_x_path');
             }
@@ -66,7 +66,7 @@ class SearchDocument extends DataObject
             if (!$bypassElemental) {
                 $useElemental = false;
                 foreach ($origin->hasOne() as $key => $class) {
-                    if($class == ElementalArea::class) {
+                    if ($class == ElementalArea::class) {
                         $useElemental = true;
                     }
                 }
@@ -75,7 +75,7 @@ class SearchDocument extends DataObject
             }
 
             $output = [];
-            if($useElemental) {
+            if ($useElemental) {
                 foreach ($origin->hasOne() as $key => $class) {
                     if ($class !== ElementalArea::class) {
                         continue;
@@ -86,16 +86,15 @@ class SearchDocument extends DataObject
                         $output[] = $area->forTemplate();
                     }
                 }
-            }
-            else {
+            } else {
                 $output[] = Director::test($searchLink);
             }
 
             // any fields mark to search
-            if($origin->config()->get('full_text_fields')) {
+            if ($origin->config()->get('full_text_fields')) {
                 foreach ($origin->config()->get('full_text_fields') as $fieldName) {
                     $dbObject = $origin->dbObject($fieldName);
-                    if($dbObject) {
+                    if ($dbObject) {
                         $output[] = $dbObject->forTemplate();
                     }
                 }
@@ -106,21 +105,16 @@ class SearchDocument extends DataObject
             if (!$x_path) {
                 $x_path = self::config()->get('search_x_path');
             }
-            if ($x_path) {
-                $domDoc = new \DOMDocument();
-                @$domDoc->loadHTML($html);
 
-                $finder = new \DOMXPath($domDoc);
-                $nodes = $finder->query("//*[contains(@class, '$x_path')]");
-                $nodeValues = [];
-                if ($nodes->length) {
-                    foreach ($nodes as $node) {
-                        $nodeValues[] = $node->nodeValue;
+            if ($x_path) {
+                $contents = '';
+                if (is_array($x_path)) {
+                    foreach ($x_path as $xPath) {
+                        $contents .= $this->searchXPath($xPath, $html);
                     }
                 } else {
-                    $contents = strip_tags($html);
+                    $contents .= $this->searchXPath($x_path, $html);
                 }
-                $contents = implode("\n\n", $nodeValues);
             } else {
                 $contents = strip_tags($html);
             }
@@ -140,9 +134,6 @@ class SearchDocument extends DataObject
             SSViewer::set_themes($oldThemes);
         }
         return implode($output);
-
-
-
 
 
         /*
@@ -186,6 +177,31 @@ class SearchDocument extends DataObject
         */
 
 
+    }
+
+    /**
+     * @param $xPath
+     * @param $html
+     * @return string
+     */
+    protected function searchXPath($xPath, $html)
+    {
+        $domDoc = new \DOMDocument();
+        @$domDoc->loadHTML($html);
+
+        $finder = new \DOMXPath($domDoc);
+        $nodes = $finder->query("//*[contains(@class, '$xPath')]");
+        $nodeValues = [];
+        if ($nodes->length) {
+            foreach ($nodes as $node) {
+                $nodeValues[] = $node->nodeValue;
+            }
+        } else {
+            $contents = strip_tags($html);
+        }
+        $contents = implode("\n\n", $nodeValues);
+
+        return $contents;
     }
 
     function removeEmptyLines($string)
