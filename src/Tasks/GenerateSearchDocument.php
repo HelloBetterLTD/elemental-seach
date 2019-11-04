@@ -27,6 +27,8 @@ class GenerateSearchDocument extends BuildTask
 
     protected $description = 'Generate search documents for items.';
 
+    private static $segment = 'make-search-docs'; 
+
     /**
      * Implement this method in the task subclass to
      * execute via the TaskRunner
