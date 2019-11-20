@@ -20,11 +20,15 @@ class CMSMainExtension extends Extension
 
     public function updateEditForm(Form $form)
     {
-        $form->Actions()->insertAfter('action_publish',
-            FormAction::create('makeSearch', 'Create Search Doc')
-                ->setUseButtonTag(true)
-                ->addExtraClass('btn btn-outline-primary')
-        );
+        $record = $this->owner->getRecord($this->owner->currentPageID());
+
+        if(!$record->isOnDraftOnly()){
+            $form->Actions()->insertAfter('action_publish',
+                FormAction::create('makeSearch', 'Create Search Doc')
+                    ->setUseButtonTag(true)
+                    ->addExtraClass('btn btn-outline-primary')
+            );
+        }
     }
 
     public function makeSearch($data, Form $form)
