@@ -73,6 +73,13 @@ class SearchDocumentGenerator extends DataExtension implements TemplateGlobalPro
         }
     }
 
+    public function onAfterUnpublish()
+    {
+        if ($this->owner->isOnDraftOnly() && self::find_document($this->owner)) {
+            self::delete_doc($this->owner);
+        }
+    }
+
     public function onAfterArchive()
     {
         self::delete_doc($this->owner);
@@ -80,7 +87,7 @@ class SearchDocumentGenerator extends DataExtension implements TemplateGlobalPro
 
     public static function make_document_for(DataObject $object)
     {
-        if(self::case_create_document($object)) { 
+        if(self::case_create_document($object)) {
             $doc = self::find_or_make_document($object);
             $doc->makeSearchContent();
         }
