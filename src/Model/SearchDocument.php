@@ -119,8 +119,10 @@ class SearchDocument extends DataObject
                 $contents = strip_tags($html);
             }
 
-
             $this->Title = $origin->getTitle();
+            if ($this->Origin()->hasMethod('updateSearchContents')) {
+                $this->Origin()->updateSearchContents($contents);
+            }
             if ($contents) {
                 $contents = preg_replace("/(^[\r\n]*|[\r\n]+)[\s\t]*[\r\n]+/", "\n", $contents);
                 $this->Content = $contents;
@@ -134,49 +136,6 @@ class SearchDocument extends DataObject
             SSViewer::set_themes($oldThemes);
         }
         return implode($output);
-
-
-        /*
-        $searchLink = $origin->getGenerateSearchLink();
-
-        try {
-            $client = new Client();
-            $res = $client->request('GET', $searchLink);
-            if ($res->getStatusCode() == 200) {
-                $body = $res->getBody();
-
-                $x_path = $origin->config()->get('search_x_path');
-                if (!$x_path) {
-                    $x_path = self::config()->get('search_x_path');
-                }
-
-                if ($x_path) {
-                    $domDoc = new \DOMDocument();
-                    @$domDoc->loadHTML($body);
-
-                    $finder = new \DOMXPath($domDoc);
-                    $nodes = $finder->query("//*[contains(@class, '$x_path')]");
-                    $nodeValues = [];
-                    if ($nodes->length) {
-                        foreach ($nodes as $node) {
-                            $nodeValues[] = $node->nodeValue;
-                        }
-                    }
-                    $contents = implode("\n\n", $nodeValues);
-                } else {
-                    $contents = strip_tags($body);
-                }
-
-                $this->Title = $origin->getTitle();
-                if ($contents) {
-                    $this->Content = $contents;
-                }
-                $this->write();
-            }
-        } catch(\Exception $e) {}
-        */
-
-
     }
 
     /**

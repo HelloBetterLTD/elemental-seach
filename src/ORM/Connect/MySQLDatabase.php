@@ -174,7 +174,10 @@ class MySQLDatabase extends SS_MySQLDatabase
         $objects = array();
 
         foreach ($records as $record) {
-            $objects[] = DataList::create($record['ClassName'])->byID($record['ID']);
+            $object = DataList::create($record['ClassName'])->byID($record['ID']);
+            if ($object->canView()) {
+                $objects[] = $object;
+            }
         }
 
         $list = new PaginatedList(new ArrayList($objects));
