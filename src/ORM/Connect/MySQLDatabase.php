@@ -175,7 +175,7 @@ class MySQLDatabase extends SS_MySQLDatabase
 
         foreach ($records as $record) {
             $object = DataList::create($record['ClassName'])->byID($record['ID']);
-            if ($object->canView()) {
+            if ($object && $object->canView()) {
                 $objects[] = $object;
             }
         }

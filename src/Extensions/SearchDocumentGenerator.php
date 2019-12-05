@@ -100,10 +100,18 @@ class SearchDocumentGenerator extends DataExtension implements TemplateGlobalPro
     {
         $schema = DataObject::getSchema();
         $fields = $schema->databaseFields($object->ClassName);
-        if(array_key_exists('ShowInSearch', $fields)) {
-            return $object->getField('ShowInSearch');
+        $ret = true;
+        if (self::is_versioned($object)) {
+            if (!$object->isPublished()) {
+                $ret = false;
+            }
         }
-        return true;
+        if ($ret) {
+            if (array_key_exists('ShowInSearch', $fields)) {
+                $ret = $object->getField('ShowInSearch');
+            }
+        }
+        return $ret;
     }
 
     public static function is_versioned(DataObject $object)
