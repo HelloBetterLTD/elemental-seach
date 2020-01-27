@@ -17,6 +17,7 @@ use SilverStripe\ORM\DataList;
 use SilverStripe\ORM\DataObject;
 use SilverStripe\Versioned\Versioned;
 use SilverStripe\View\SSViewer;
+use SilverStripers\ElementalSearch\Extensions\SearchDocumentGenerator;
 
 class SearchDocument extends DataObject
 {
@@ -26,6 +27,7 @@ class SearchDocument extends DataObject
         'OriginID' => 'Int',
         'Title' => 'Text',
         'Content' => 'Text',
+        'Locale' => 'Varchar'
     ];
 
     private static $searchable_fields = [
@@ -47,6 +49,13 @@ class SearchDocument extends DataObject
 
     public function makeSearchContent()
     {
+
+        $locale = null;
+        if (SearchDocumentGenerator::is_transalated()) {
+            $locale = SearchDocumentGenerator::get_current_locale();
+            SearchDocumentGenerator::set_locale($this->Locale);
+        }
+
         $origin = $this->Origin();
         if (!$origin) {
             return;
@@ -135,6 +144,11 @@ class SearchDocument extends DataObject
             // CMS layout can break on the response. (SilverStripe 4.1.1)
             SSViewer::set_themes($oldThemes);
         }
+
+        if (SearchDocumentGenerator::is_transalated()) {
+            SearchDocumentGenerator::set_locale($locale);
+        }
+
         return implode($output);
     }
 

@@ -27,7 +27,7 @@ class GenerateSearchDocument extends BuildTask
 
     protected $description = 'Generate search documents for items.';
 
-    private static $segment = 'make-search-docs'; 
+    private static $segment = 'make-search-docs';
 
     /**
      * Implement this method in the task subclass to
@@ -40,6 +40,7 @@ class GenerateSearchDocument extends BuildTask
     {
         set_time_limit(50000);
         $classes = $this->getAllSearchDocClasses();
+        $locales = SearchDocumentGenerator::get_locales();
         foreach ($classes as $class) {
             foreach ($list = DataList::create($class) as $record) {
 				echo sprintf(
@@ -48,7 +49,9 @@ class GenerateSearchDocument extends BuildTask
 						$record->ClassName,
 						$record->getGenerateSearchLink()) . '<br>';
 				try {
-					SearchDocumentGenerator::make_document_for($record);
+				    foreach ($locales as $locale) {
+                        SearchDocumentGenerator::make_document_for($record, $locale);
+                    }
 				} catch (Exception $e) {
 				}
             }
