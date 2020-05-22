@@ -12,6 +12,7 @@ namespace SilverStripers\ElementalSearch\Model;
 
 use DNADesign\Elemental\Models\ElementalArea;
 use GuzzleHttp\Client;
+use SilverStripe\CMS\Model\SiteTree;
 use SilverStripe\Control\Director;
 use SilverStripe\ORM\DataList;
 use SilverStripe\ORM\DataObject;
@@ -35,6 +36,8 @@ class SearchDocument extends DataObject
 
     private static $table_name = 'SearchDocument';
 
+    private static $stand_alone_search_elements = [];
+
     private static $search_x_path;
 
     /**
@@ -52,71 +55,78 @@ class SearchDocument extends DataObject
             return;
         }
 
+        $output = [];
         $searchLink = $origin->getGenerateSearchLink();
 
         $oldThemes = SSViewer::get_themes();
         SSViewer::set_themes(SSViewer::config()->get('themes'));
 
         try {
-            $bypassElemental = self::config()->get('use_only_x_path');
-            if (!$bypassElemental) {
+            $isSiteTree = is_a($origin, SiteTree::class);
+            $contents = '';
+
+
+            if ($isSiteTree) {
                 $bypassElemental = self::config()->get('use_only_x_path');
-            }
-
-            if (!$bypassElemental) {
-                $useElemental = false;
-                foreach ($origin->hasOne() as $key => $class) {
-                    if ($class == ElementalArea::class) {
-                        $useElemental = true;
-                    }
+                if (!$bypassElemental) {
+                    $bypassElemental = self::config()->get('use_only_x_path');
                 }
-            } else {
-                $useElemental = false;
-            }
 
-            $output = [];
-            if ($useElemental) {
-                foreach ($origin->hasOne() as $key => $class) {
-                    if ($class !== ElementalArea::class) {
-                        continue;
-                    }
-                    /** @var ElementalArea $area */
-                    $area = $origin->$key();
-                    if ($area && $area->exists()) {
-                        $output[] = $area->forTemplate()->forTemplate();
-                    }
-                }
-            } else {
-                $output[] = Director::test($searchLink);
-            }
-
-            // any fields mark to search
-            if ($origin->config()->get('full_text_fields')) {
-                foreach ($origin->config()->get('full_text_fields') as $fieldName) {
-                    $dbObject = $origin->dbObject($fieldName);
-                    if ($dbObject) {
-                        $output[] = $dbObject->forTemplate();
-                    }
-                }
-            }
-
-            $html = implode("\n", $output);
-            $x_path = $origin->config()->get('search_x_path');
-            if (!$x_path) {
-                $x_path = self::config()->get('search_x_path');
-            }
-
-            if ($x_path) {
-                $contents = '';
-                if (is_array($x_path)) {
-                    foreach ($x_path as $xPath) {
-                        $contents .= $this->searchXPath($xPath, $html);
+                if (!$bypassElemental) {
+                    $useElemental = false;
+                    foreach ($origin->hasOne() as $key => $class) {
+                        if ($class == ElementalArea::class) {
+                            $useElemental = true;
+                        }
                     }
                 } else {
-                    $contents .= $this->searchXPath($x_path, $html);
+                    $useElemental = false;
                 }
+
+                if ($useElemental) {
+                    foreach ($origin->hasOne() as $key => $class) {
+                        if ($class !== ElementalArea::class) {
+                            continue;
+                        }
+                        /** @var ElementalArea $area */
+                        $area = $origin->$key();
+                        if ($area && $area->exists()) {
+                            $output[] = $area->forTemplate()->forTemplate();
+                        }
+                    }
+                } else {
+                    $output[] = Director::test($searchLink);
+                }
+                // any fields mark to search
+                if ($origin->config()->get('full_text_fields')) {
+                    foreach ($origin->config()->get('full_text_fields') as $fieldName) {
+                        $dbObject = $origin->dbObject($fieldName);
+                        if ($dbObject) {
+                            $output[] = $dbObject->forTemplate();
+                        }
+                    }
+                }
+
+                $html = implode("\n", $output);
+                $x_path = $origin->config()->get('search_x_path');
+                if (!$x_path) {
+                    $x_path = self::config()->get('search_x_path');
+                }
+
+                if ($x_path) {
+                    if (is_array($x_path)) {
+                        foreach ($x_path as $xPath) {
+                            $contents .= $this->searchXPath($xPath, $html);
+                        }
+                    } else {
+                        $contents .= $this->searchXPath($x_path, $html);
+                    }
+                } else {
+                    $contents = strip_tags($html);
+                }
+
             } else {
-                $contents = strip_tags($html);
+                $contents = strip_tags($origin->forTemplate());
             }
 
             $this->Title = $origin->getTitle();
