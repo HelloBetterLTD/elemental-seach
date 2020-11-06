@@ -25,6 +25,9 @@ class SearchForm extends SS_SearchForm
 	public function classesToSearch($classes)
 	{
 		$supportedClasses = array(SearchDocument::class, File::class);
+        if(empty($classes)){
+            $classes = $supportedClasses;
+        }
 
 		$illegalClasses = array_diff($classes, $supportedClasses);
 		if ($illegalClasses) {
