@@ -12,8 +12,7 @@
     "minimum-stability": "dev",
 	"prefer-stable": true,
     "require": {
-		"dnadesign/silverstripe-elemental": "*",
-        "guzzlehttp/guzzle": "6.3.3"
+		"dnadesign/silverstripe-elemental": "*"
     },
     "autoload": {
         "psr-4": {
@@ -24,5 +23,5 @@
         ],
         "installer-name": "elemental-search"
     }
-    
+
 }
