@@ -11,7 +11,6 @@
 namespace SilverStripers\ElementalSearch\Model;
 
 use DNADesign\Elemental\Models\ElementalArea;
-use GuzzleHttp\Client;
 use SilverStripe\CMS\Model\SiteTree;
 use SilverStripe\Control\Director;
 use SilverStripe\ORM\DataList;
