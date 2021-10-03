@@ -164,10 +164,11 @@ class SearchDocument extends DataObject
             foreach ($nodes as $node) {
                 $nodeValues[] = $node->nodeValue;
             }
+            
+            $contents = implode("\n\n", $nodeValues);
         } else {
             $contents = strip_tags($html);
         }
-        $contents = implode("\n\n", $nodeValues);
 
         return $contents;
     }
