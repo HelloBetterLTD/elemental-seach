@@ -6,7 +6,7 @@ DNADesign\Elemental\Models\BaseElement:
     - SilverStripers\ElementalSearch\Extensions\ElementDocumentGeneratorExtension
 SilverStripe\CMS\Model\SiteTree:
   extensions:
-    - SilverStripers\ElementalSearch\Extensions\SiteTreeDocumentGenerator
+    - SilverStripers\ElementalSearch\Extensions\VersionedDocumentGenerator
 
 SilverStripe\CMS\Controllers\CMSPageEditController:
   extensions:

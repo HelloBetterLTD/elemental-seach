@@ -11,6 +11,7 @@ namespace SilverStripers\ElementalSearch\Extensions;
 
 
 use SilverStripe\CMS\Controllers\CMSMain;
+use SilverStripe\Core\Config\Configurable;
 use SilverStripe\Core\Extension;
 use SilverStripe\Forms\Form;
 use SilverStripe\Forms\FormAction;
@@ -18,16 +19,22 @@ use SilverStripe\Forms\FormAction;
 class CMSMainExtension extends Extension
 {
 
+    use Configurable;
+
+    private static $display_create_button = false;
+
     public function updateEditForm(Form $form)
     {
-        $record = $this->owner->getRecord($this->owner->currentPageID());
+        if (self::config()->get('display_create_button')) {
+            $record = $this->owner->getRecord($this->owner->currentPageID());
 
-        if(!$record->isOnDraftOnly()){
-            $form->Actions()->insertAfter('action_publish',
-                FormAction::create('makeSearch', 'Create Search Doc')
-                    ->setUseButtonTag(true)
-                    ->addExtraClass('btn btn-outline-primary')
-            );
+            if (!$record->isOnDraftOnly()) {
+                $form->Actions()->insertAfter('action_publish',
+                    FormAction::create('makeSearch', 'Create Search Doc')
+                        ->setUseButtonTag(true)
+                        ->addExtraClass('btn btn-outline-primary')
+                );
+            }
         }
     }
 
@@ -38,7 +45,7 @@ class CMSMainExtension extends Extension
         $id = $owner->currentPageID();
         $record = $owner->getRecord($id);
         if($record) {
-            SearchDocumentGenerator::make_document_for($record);
+            $record->createSearchDocument();
             $message = 'Search document generator';
         }
         else {

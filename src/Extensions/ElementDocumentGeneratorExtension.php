@@ -21,65 +21,39 @@ class ElementDocumentGeneratorExtension extends SearchDocumentGenerator
         /* @var $element BaseElement */
         $element = $this->owner;
         $page = $element->getPage();
-        return $page ? $page->Link() : null;
+        return $page->getGenerateSearchLink();
     }
 
-    public function onAfterWrite()
+    public function canCreateDocument()
     {
-        return null;
+        $page = $element->getPage();
+        return $page->canCreateDocument();
+    }
+
+    public function createSearchDocument()
+    {
+        $page = $element->getPage();
+        return $page->createSearchDocument();
+    }
+
+    public function deleteSearchDocument()
+    {
+        $page = $element->getPage();
+        return $page->deleteSearchDocument();
     }
 
     public function onAfterDelete()
     {
-        return null;
+        return; // we dont want to delete the page document just because an element was deleted
     }
 
-    public function onAfterPublish()
+    public function onAfterUnpublish()
     {
-        if ($this->isThisAStandAloneClass()) {
-            self::make_document_for($this->owner);
-        }
-        if (!SearchDocumentGenerator::search_documents_prevented()) {
-            $this->makeSearchDocumentForPage();
-        }
-    }
-
-    public function onBeforeArchive()
-    {
-        return null;
+        return; // we dont want to delete the page document just because an element was deleted
     }
 
     public function onAfterArchive()
     {
-        if ($this->isThisAStandAloneClass()) {
-            self::delete_doc($this->owner);
-        }
-        if (!SearchDocumentGenerator::search_documents_prevented()) {
-            $this->makeSearchDocumentForPage();
-        }
+        return; // we dont want to delete the page document just because an element was deleted
     }
-
-    public function makeSearchDocumentForPage()
-    {
-        /* @var $element BaseElement */
-        $element = $this->owner;
-        $page = $element->getPage();
-        if($page) {
-            self::make_document_for($page);
-        }
-    }
-
-    private function isThisAStandAloneClass()
-    {
-        if (($classes = $this->getStandAloneElementClasses()) && in_array(get_class($this->owner), $classes)) {
-            return true;
-        }
-        return false;
-    }
-
-    public function getStandAloneElementClasses()
-    {
-        return SearchDocument::config()->get('stand_alone_search_elements');
-    }
-
 }

@@ -9,7 +9,7 @@
 
 namespace SilverStripers\ElementalSearch\Extensions;
 
-class SiteTreeDocumentGenerator extends SearchDocumentGenerator
+class VersionedDocumentGenerator extends SearchDocumentGenerator
 {
 
     public function onAfterWrite()
@@ -20,21 +20,6 @@ class SiteTreeDocumentGenerator extends SearchDocumentGenerator
     public function onAfterDelete()
     {
         return null;
-    }
-
-    public function onAfterPublish()
-    {
-        self::make_document_for($this->owner);
-    }
-
-    public function onBeforeArchive()
-    {
-        return null;
-    }
-
-    public function onAfterArchive()
-    {
-        self::delete_doc($this->owner);
     }
 
 }

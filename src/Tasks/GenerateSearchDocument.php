@@ -19,6 +19,7 @@ use SilverStripe\ORM\DataObject;
 use SilverStripers\ElementalSearch\Extensions\ElementDocumentGeneratorExtension;
 use SilverStripers\ElementalSearch\Extensions\SearchDocumentGenerator;
 use SilverStripers\ElementalSearch\Extensions\SiteTreeDocumentGenerator;
+use SilverStripers\ElementalSearch\Extensions\VersionedDocumentGenerator;
 
 class GenerateSearchDocument extends BuildTask
 {
@@ -27,7 +28,7 @@ class GenerateSearchDocument extends BuildTask
 
     protected $description = 'Generate search documents for items.';
 
-    private static $segment = 'make-search-docs'; 
+    private static $segment = 'make-search-docs';
 
     /**
      * Implement this method in the task subclass to
@@ -48,7 +49,7 @@ class GenerateSearchDocument extends BuildTask
 						$record->ClassName,
 						$record->getGenerateSearchLink()) . '<br>';
 				try {
-					SearchDocumentGenerator::make_document_for($record);
+					$record->createSearchDocument();
 				} catch (Exception $e) {
 				}
             }
@@ -63,7 +64,7 @@ class GenerateSearchDocument extends BuildTask
             $configs = Config::inst()->get($class, 'extensions', Config::UNINHERITED);
             if($configs) {
                 $valid = in_array(SearchDocumentGenerator::class, $configs)
-                    || in_array(SiteTreeDocumentGenerator::class, $configs);
+                    || in_array(VersionedDocumentGenerator::class, $configs);
 
                 if ($valid) {
                     $list[] = $class;

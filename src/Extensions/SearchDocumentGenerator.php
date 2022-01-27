@@ -11,6 +11,7 @@ namespace SilverStripers\ElementalSearch\Extensions;
 
 use \Exception;
 use SilverStripe\Control\Director;
+use SilverStripe\Core\Config\Configurable;
 use SilverStripe\ORM\DataExtension;
 use SilverStripe\ORM\DataObject;
 use SilverStripe\Versioned\Versioned;
@@ -20,7 +21,11 @@ use SilverStripers\ElementalSearch\Model\SearchDocument;
 class SearchDocumentGenerator extends DataExtension implements TemplateGlobalProvider
 {
 
-    private static $prevent_search_documents = false;
+    use Configurable;
+
+    private static $excluded_classes = [
+        'SilverStripe\ErrorPage\ErrorPage'
+    ];
 
     public function getGenerateSearchLink()
     {
@@ -42,112 +47,73 @@ class SearchDocumentGenerator extends DataExtension implements TemplateGlobalPro
         );
     }
 
-    public static function search_documents_prevented()
+    /**
+     * @return bool
+     */
+    public function canCreateDocument()
     {
-        return self::$prevent_search_documents;
+        $ret = true;
+        $object = $this->owner;
+        $class = get_class($object);
+        $excludedTypes = self::config()->get('excluded_classes');
+        if (count($excludedTypes) && in_array($class, $excludedTypes)) {
+            $ret = false;
+        }
+        $schema = DataObject::getSchema();
+        $fields = $schema->databaseFields($class);
+        if (array_key_exists('ShowInSearch', $fields)) {
+            $ret = $object->ShowInSearch;
+        }
+        return $ret;
     }
 
-    public static function prevent_search_documents($prevent = true)
-    {
-        self::$prevent_search_documents = $prevent;
-    }
 
     public function onAfterWrite()
     {
-        if(!self::is_versioned($this->owner) && !self::$prevent_search_documents) {
-            self::make_document_for($this->owner);
+        if(!self::is_versioned($this->owner)) {
+            $this->owner->createSearchDocument();
         }
     }
 
     public function onAfterDelete()
     {
         if(!self::is_versioned($this->owner)) {
-            self::delete_doc($this->owner);
+            $this->owner->deleteSearchDocument();
         }
     }
 
     public function onAfterPublish()
     {
-        if (!self::$prevent_search_documents) {
-            self::make_document_for($this->owner);
-        }
+        $this->owner->createSearchDocument();
     }
 
     public function onAfterUnpublish()
     {
-        if ($this->owner->isOnDraftOnly() && self::find_document($this->owner)) {
-            self::delete_doc($this->owner);
-        }
+        $this->owner->deleteSearchDocument();
     }
 
     public function onAfterArchive()
     {
-        self::delete_doc($this->owner);
+        $this->owner->deleteSearchDocument();
     }
 
-    public static function make_document_for(DataObject $object)
+    public function deleteSearchDocument()
     {
-        if(self::case_create_document($object)) {
-            $doc = self::find_or_make_document($object);
-            $doc->makeSearchContent();
-        }
-        else {
-            self::delete_doc($object);
-        }
+        $document = SearchDocument::find_doc($this->owner);
+        $document->delete();
     }
 
-    public static function case_create_document(DataObject $object)
+    public function createSearchDocument()
     {
-        $schema = DataObject::getSchema();
-        $fields = $schema->databaseFields($object->ClassName);
-        $ret = true;
-        if (self::is_versioned($object)) {
-            if (!$object->isPublished()) {
-                $ret = false;
-            }
+        if ($this->owner->canCreateDocument()) {
+            $document = SearchDocument::find_or_make_doc($this->owner);
+            $document->makeSearchContent();
         }
-        if ($ret) {
-            if (array_key_exists('ShowInSearch', $fields)) {
-                $ret = $object->getField('ShowInSearch');
-            }
-        }
-        return $ret;
     }
 
     public static function is_versioned(DataObject $object)
     {
         return $object->hasExtension(Versioned::class);
-    }
-
-
-    public static function delete_doc(DataObject $object)
-    {
-        $doc = self::find_document($object);
-        if($doc) {
-            $doc->delete();
-        }
-    }
-
-    public static function find_or_make_document(DataObject $object)
-    {
-        $doc = self::find_document($object);
-        if(!$doc) {
-            $doc = new SearchDocument([
-                'Type' => get_class($object),
-                'OriginID' => $object->ID
-            ]);
-            $doc->write();
-        }
-        return $doc;
-    }
-
-    public static function find_document(DataObject $object)
-    {
-        $doc = SearchDocument::get()->filter([
-            'Type' => get_class($object),
-            'OriginID' => $object->ID
-        ])->first();
-        return $doc;
     }
 
     public static function is_search()
@@ -161,6 +127,5 @@ class SearchDocumentGenerator extends DataExtension implements TemplateGlobalPro
 			'IsSearch' => 'is_search'
 		];
 	}
-
 
 }

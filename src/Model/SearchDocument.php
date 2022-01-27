@@ -13,6 +13,7 @@ namespace SilverStripers\ElementalSearch\Model;
 use DNADesign\Elemental\Models\ElementalArea;
 use SilverStripe\CMS\Model\SiteTree;
 use SilverStripe\Control\Director;
+use SilverStripe\Core\ClassInfo;
 use SilverStripe\ORM\DataList;
 use SilverStripe\ORM\DataObject;
 use SilverStripe\Versioned\Versioned;
@@ -22,10 +23,12 @@ class SearchDocument extends DataObject
 {
 
     private static $db = [
-        'Type' => 'Varchar(300)',
-        'OriginID' => 'Int',
         'Title' => 'Text',
         'Content' => 'Text',
+    ];
+
+    private static $has_one = [
+        'Owner' => DataObject::class
     ];
 
     private static $searchable_fields = [
@@ -35,30 +38,18 @@ class SearchDocument extends DataObject
 
     private static $table_name = 'SearchDocument';
 
-    private static $stand_alone_search_elements = [];
-
     private static $search_x_path;
-
-    /**
-     * @return DataObject
-     */
-    public function Origin()
-    {
-        return DataList::create($this->Type)->byID($this->OriginID);
-    }
 
     public function makeSearchContent()
     {
-        $origin = $this->Origin();
-        if (!$origin) {
+        /* @var $origin DataObject */
+        $origin = $this->Owner();
+        if (!$origin->exists()) {
             return;
         }
 
         $output = [];
         $searchLink = $origin->getGenerateSearchLink();
-
-        $oldThemes = SSViewer::get_themes();
-        SSViewer::set_themes(SSViewer::config()->get('themes'));
 
         try {
             $isSiteTree = is_a($origin, SiteTree::class);
@@ -66,83 +57,47 @@ class SearchDocument extends DataObject
 
 
             if ($isSiteTree) {
-                $bypassElemental = self::config()->get('use_only_x_path');
-                if (!$bypassElemental) {
-                    $bypassElemental = self::config()->get('use_only_x_path');
-                }
+                $url = $origin->getGenerateSearchLink();
+                $ch = curl_init($url);
+                curl_setopt($ch, CURLOPT_TIMEOUT, 20);
+                curl_setopt($ch, CURLOPT_RETURNTRANSFER, true);
+                curl_setopt($ch, CURLOPT_SSL_VERIFYPEER, false);
+                curl_setopt($ch, CURLOPT_USERAGENT, str_replace(',', '/', 'SilverStripe'));
+                $html = curl_exec($ch);
 
-                if (!$bypassElemental) {
-                    $useElemental = false;
-                    foreach ($origin->hasOne() as $key => $class) {
-                        if ($class == ElementalArea::class) {
-                            $useElemental = true;
-                        }
-                    }
-                } else {
-                    $useElemental = false;
+                $xpath = $origin->config()->get('search_x_path');
+                if (!$xpath) {
+                    $xpath = self::config()->get('search_x_path');
                 }
-
-                if ($useElemental) {
-                    foreach ($origin->hasOne() as $key => $class) {
-                        if ($class !== ElementalArea::class) {
-                            continue;
-                        }
-                        /** @var ElementalArea $area */
-                        $area = $origin->$key();
-                        if ($area && $area->exists()) {
-                            $output[] = $area->forTemplate()->forTemplate();
-                        }
-                    }
-                } else {
-                    $output[] = Director::test($searchLink);
-                }
-                // any fields mark to search
-                if ($origin->config()->get('full_text_fields')) {
-                    foreach ($origin->config()->get('full_text_fields') as $fieldName) {
-                        $dbObject = $origin->dbObject($fieldName);
-                        if ($dbObject) {
-                            $output[] = $dbObject->forTemplate();
-                        }
-                    }
-                }
-
-                $html = implode("\n", $output);
-                $x_path = $origin->config()->get('search_x_path');
-                if (!$x_path) {
-                    $x_path = self::config()->get('search_x_path');
-                }
-
-                if ($x_path) {
-                    if (is_array($x_path)) {
-                        foreach ($x_path as $xPath) {
-                            $contents .= $this->searchXPath($xPath, $html);
+                if ($xpath) {
+                    if (is_array($xpath)) {
+                        foreach ($xpath as $xpathElment) {
+                            $contents .= $this->searchXPath($xpathElment, $html);
                         }
                     } else {
-                        $contents .= $this->searchXPath($x_path, $html);
+                        $contents .= $this->searchXPath($xpath, $html);
                     }
                 } else {
-                    $contents = strip_tags($html);
+                    $contents = $html;
                 }
-
+                $contents = strip_tags($contents);
             } else {
                 $contents = strip_tags($origin->forTemplate());
             }
 
-            $this->Title = $origin->getTitle();
-            if ($this->Origin()->hasMethod('updateSearchContents')) {
-                $this->Origin()->updateSearchContents($contents);
-            }
+            $title = $origin->getTitle();
+            $origin->invokeWithExtensions('updateSearchContents', $contents);
             if ($contents) {
                 $contents = preg_replace("/(^[\r\n]*|[\r\n]+)[\s\t]*[\r\n]+/", "\n", $contents);
-                $this->Content = $contents;
             }
+            $this->update([
+                'Title' => $title,
+                'Content' => $contents
+            ]);
             $this->write();
         } catch (\Exception $e) {
+            $this->delete();
         } finally {
-            // Reset theme if an exception occurs, if you don't have a
-            // try / finally around code that might throw an Exception,
-            // CMS layout can break on the response. (SilverStripe 4.1.1)
-            SSViewer::set_themes($oldThemes);
         }
         return implode($output);
     }
@@ -175,6 +130,41 @@ class SearchDocument extends DataObject
     function removeEmptyLines($string)
     {
         return preg_replace("/(^[\r\n]*|[\r\n]+)[\s\t]*[\r\n]+/", "\n", $string);
+    }
+
+    /**
+     * @param $object
+     * @return SearchDocument|null
+     */
+    public static function find_doc($object)
+    {
+
+        $classes = ClassInfo::ancestry($object, true);
+        $baseClass = reset($classes);
+        return SearchDocument::get()->filter([
+            'OwnerID' => $object->ID,
+            'OwnerClass' => $baseClass
+        ])->first();
+    }
+
+    /**
+     * @param $object
+     * @return DataObject|SearchDocument|null
+     * @throws \SilverStripe\ORM\ValidationException
+     */
+    public static function find_or_make_doc($object)
+    {
+        $classes = ClassInfo::ancestry($object, true);
+        $baseClass = reset($classes);
+        $doc = self::find_doc($object);
+        if (!$doc) {
+            $doc = SearchDocument::create([
+                'OwnerID' => $object->ID,
+                'OwnerClass' => $baseClass
+            ]);
+            $doc->write();
+        }
+        return $doc;
     }
 
 }
