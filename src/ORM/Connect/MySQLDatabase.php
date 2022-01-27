@@ -119,8 +119,8 @@ class MySQLDatabase extends SS_MySQLDatabase
         // Make column selection lists
         $select = array(
             $documentClass => array(
-                "ClassName" => "Type",
-                "ID" => "OriginID",
+                "ClassName" => "OwnerClass",
+                "ID" => "OwnerID",
                 "ParentID" => "_{$charset}''",
                 "Title",
                 "MenuTitle" => "_{$charset}''",
@@ -174,8 +174,8 @@ class MySQLDatabase extends SS_MySQLDatabase
         $objects = array();
 
         foreach ($records as $record) {
-            $object = DataList::create($record['ClassName'])->byID($record['ID']);
-            if ($object && $object->canView()) {
+            $object = DataObject::get_by_id($record['ClassName'], $record['ID']);
+            if ($object && $object->exists() && $object->canView()) {
                 $objects[] = $object;
             }
         }

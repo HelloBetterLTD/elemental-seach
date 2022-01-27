@@ -17,6 +17,7 @@ use SilverStripe\ORM\DataObject;
 use SilverStripe\Versioned\Versioned;
 use SilverStripe\View\TemplateGlobalProvider;
 use SilverStripers\ElementalSearch\Model\SearchDocument;
+use SilverStripers\ElementalSearch\Page\SearchPage;
 
 class SearchDocumentGenerator extends DataExtension implements TemplateGlobalProvider
 {
@@ -24,7 +25,8 @@ class SearchDocumentGenerator extends DataExtension implements TemplateGlobalPro
     use Configurable;
 
     private static $excluded_classes = [
-        'SilverStripe\ErrorPage\ErrorPage'
+        'SilverStripe\ErrorPage\ErrorPage',
+        SearchPage::class
     ];
 
     public function getGenerateSearchLink()
@@ -99,8 +101,9 @@ class SearchDocumentGenerator extends DataExtension implements TemplateGlobalPro
 
     public function deleteSearchDocument()
     {
-        $document = SearchDocument::find_doc($this->owner);
-        $document->delete();
+        if ($document = SearchDocument::find_doc($this->owner)) {
+            $document->delete();
+        }
     }
 
     public function createSearchDocument()
