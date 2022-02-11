@@ -26,18 +26,21 @@ class ElementDocumentGeneratorExtension extends SearchDocumentGenerator
 
     public function canCreateDocument()
     {
+        $element = $this->owner;
         $page = $element->getPage();
         return $page->canCreateDocument();
     }
 
     public function createSearchDocument()
     {
+        $element = $this->owner;
         $page = $element->getPage();
         return $page->createSearchDocument();
     }
 
     public function deleteSearchDocument()
     {
+        $element = $this->owner;
         $page = $element->getPage();
         return $page->deleteSearchDocument();
     }
