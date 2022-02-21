@@ -44,12 +44,12 @@ class GenerateSearchDocument extends BuildTask
         foreach ($classes as $class) {
             foreach ($list = DataList::create($class) as $record) {
 				echo sprintf(
-						'Making record for %s type %s, link %s',
+						'Updating record for %s type %s, link %s',
 						$record->getTitle(),
 						$record->ClassName,
 						$record->getGenerateSearchLink()) . '<br>';
 				try {
-					$record->createSearchDocument();
+					$record->createOrDeleteSearchDocument();
 				} catch (Exception $e) {
 				}
             }

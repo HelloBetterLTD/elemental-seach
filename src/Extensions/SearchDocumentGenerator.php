@@ -66,6 +66,9 @@ class SearchDocumentGenerator extends DataExtension implements TemplateGlobalPro
         if (array_key_exists('ShowInSearch', $fields)) {
             $ret = $object->ShowInSearch;
         }
+
+        $this->owner->invokeWithExtensions('updateCanCreateDocument', $ret);
+
         return $ret;
     }
 
@@ -73,7 +76,7 @@ class SearchDocumentGenerator extends DataExtension implements TemplateGlobalPro
     public function onAfterWrite()
     {
         if(!self::is_versioned($this->owner)) {
-            $this->owner->createSearchDocument();
+            $this->owner->createOrDeleteSearchDocument();
         }
     }
 
@@ -86,7 +89,7 @@ class SearchDocumentGenerator extends DataExtension implements TemplateGlobalPro
 
     public function onAfterPublish()
     {
-        $this->owner->createSearchDocument();
+        $this->owner->createOrDeleteSearchDocument();
     }
 
     public function onAfterUnpublish()
@@ -103,6 +106,15 @@ class SearchDocumentGenerator extends DataExtension implements TemplateGlobalPro
     {
         if ($document = SearchDocument::find_doc($this->owner)) {
             $document->delete();
+        }
+    }
+
+    public function createOrDeleteSearchDocument()
+    {
+        if ($this->owner->canCreateDocument()) {
+            $this->owner->createSearchDocument();
+        } else {
+            $this->owner->deleteSearchDocument();
         }
     }
 
