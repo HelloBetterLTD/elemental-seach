@@ -53,10 +53,11 @@ class SearchDocument extends DataObject
 
         try {
             $isSiteTree = is_a($origin, SiteTree::class);
+            $hasSearchableLink = method_exists($origin, 'getGenerateSearchLink');
             $contents = '';
 
 
-            if ($isSiteTree) {
+            if ($isSiteTree || $hasSearchableLink) {
                 $url = $origin->getGenerateSearchLink();
                 $ch = curl_init($url);
                 curl_setopt($ch, CURLOPT_TIMEOUT, 20);
