@@ -62,10 +62,11 @@ class SearchDocument extends DataObject
 
         try {
             $isSiteTree = is_a($origin, SiteTree::class);
+            $hasSearchLink = method_exists($origin, 'getGenerateSearchLink');
             $contents = '';
 
 
-            if ($isSiteTree) {
+            if ($isSiteTree || $hasSearchLink) {
                 $bypassElemental = self::config()->get('use_only_x_path');
                 if (!$bypassElemental) {
                     $bypassElemental = self::config()->get('use_only_x_path');
