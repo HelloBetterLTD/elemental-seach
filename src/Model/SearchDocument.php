@@ -15,7 +15,7 @@ use SilverStripe\CMS\Model\SiteTree;
 use SilverStripe\Control\Director;
 use SilverStripe\ORM\DataList;
 use SilverStripe\ORM\DataObject;
-use SilverStripe\Versioned\Versioned;
+use SilverStripe\Security\Member;
 use SilverStripe\View\SSViewer;
 
 class SearchDocument extends DataObject
@@ -95,7 +95,22 @@ class SearchDocument extends DataObject
                         }
                     }
                 } else {
-                    $output[] = Director::test($searchLink);
+                    try {
+                        // Restore front-end themes from config
+                        $themes = SSViewer::config()->get('themes') ?: $oldThemes;
+                        SSViewer::set_themes($themes);
+
+                        // Render page as non-member in live mode
+                        $response = Member::actAs(null, function () use (&$searchLink) {
+                            $response = Director::test(Director::makeRelative($searchLink));
+                            return $response;
+                        });
+
+                        $output[] = $response->getBody();
+                    } finally {
+                        // Restore themes
+                        SSViewer::set_themes($oldThemes);
+                    }
                 }
                 // any fields mark to search
                 if ($origin->config()->get('full_text_fields')) {

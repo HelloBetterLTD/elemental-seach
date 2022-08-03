@@ -10,6 +10,7 @@
 namespace SilverStripers\ElementalSearch\Tasks;
 
 
+use SilverStripe\Control\Director;
 use SilverStripe\Control\HTTPRequest;
 use SilverStripe\Core\ClassInfo;
 use SilverStripe\Core\Config\Config;
@@ -27,7 +28,7 @@ class GenerateSearchDocument extends BuildTask
 
     protected $description = 'Generate search documents for items.';
 
-    private static $segment = 'make-search-docs'; 
+    private static $segment = 'make-search-docs';
 
     /**
      * Implement this method in the task subclass to
@@ -38,15 +39,20 @@ class GenerateSearchDocument extends BuildTask
      */
     public function run($request)
     {
+        $eol = Director::is_cli() ? PHP_EOL . PHP_EOL : '<br>';
         set_time_limit(50000);
         $classes = $this->getAllSearchDocClasses();
         foreach ($classes as $class) {
             foreach ($list = DataList::create($class) as $record) {
-				echo sprintf(
+				$output = sprintf(
 						'Making record for %s type %s, link %s',
 						$record->getTitle(),
 						$record->ClassName,
-						$record->getGenerateSearchLink()) . '<br>';
+						$record->getGenerateSearchLink());
+
+                $output .= $eol;
+
+                echo $output;
 				try {
 					SearchDocumentGenerator::make_document_for($record);
 				} catch (Exception $e) {
