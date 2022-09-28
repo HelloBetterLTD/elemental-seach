@@ -110,21 +110,25 @@ class SearchDocument extends DataObject
      */
     protected function searchXPath($xPath, $html)
     {
-        $domDoc = new \DOMDocument();
-        @$domDoc->loadHTML($html);
+        $contents = $html;
+        try {
+            $domDoc = new \DOMDocument();
+            @$domDoc->loadHTML($html);
 
-        $finder = new \DOMXPath($domDoc);
-        $nodes = $finder->query("//*[contains(@class, '$xPath')]");
-        $nodeValues = [];
-        if ($nodes->length) {
-            foreach ($nodes as $node) {
-                $nodeValues[] = $node->nodeValue;
+            $finder = new \DOMXPath($domDoc);
+            $nodes = $finder->query("//*[contains(@class, '$xPath')]");
+            $nodeValues = [];
+            if ($nodes->length) {
+                foreach ($nodes as $node) {
+                    $nodeValues[] = $node->nodeValue;
+                }
+            } else {
+                $contents = strip_tags($html);
             }
-        } else {
+        } catch (\Exception $e) {
             $contents = strip_tags($html);
         }
         $contents = implode("\n\n", $nodeValues);
-
         return $contents;
     }
 
