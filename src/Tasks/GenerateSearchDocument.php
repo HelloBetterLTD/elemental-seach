@@ -10,7 +10,6 @@
 namespace SilverStripers\ElementalSearch\Tasks;
 
 
-use SilverStripe\Control\Director;
 use SilverStripe\Control\HTTPRequest;
 use SilverStripe\Core\ClassInfo;
 use SilverStripe\Core\Config\Config;
@@ -20,6 +19,7 @@ use SilverStripe\ORM\DataObject;
 use SilverStripers\ElementalSearch\Extensions\ElementDocumentGeneratorExtension;
 use SilverStripers\ElementalSearch\Extensions\SearchDocumentGenerator;
 use SilverStripers\ElementalSearch\Extensions\SiteTreeDocumentGenerator;
+use SilverStripers\ElementalSearch\Extensions\VersionedDocumentGenerator;
 
 class GenerateSearchDocument extends BuildTask
 {
@@ -39,22 +39,17 @@ class GenerateSearchDocument extends BuildTask
      */
     public function run($request)
     {
-        $eol = Director::is_cli() ? PHP_EOL . PHP_EOL : '<br>';
         set_time_limit(50000);
         $classes = $this->getAllSearchDocClasses();
         foreach ($classes as $class) {
             foreach ($list = DataList::create($class) as $record) {
-                $output = sprintf(
-                    'Making record for %s type %s, link %s',
-                    $record->getTitle(),
-                    $record->ClassName,
-                    $record->getGenerateSearchLink());
-
-                $output .= $eol;
-
-                echo $output;
+                echo sprintf(
+                        'Updating record for %s type %s, link %s',
+                        $record->getTitle(),
+                        $record->ClassName,
+                        $record->getGenerateSearchLink()) . '<br>';
                 try {
-                    SearchDocumentGenerator::make_document_for($record);
+                    $record->createOrDeleteSearchDocument();
                 } catch (Exception $e) {
                 }
             }
@@ -69,7 +64,7 @@ class GenerateSearchDocument extends BuildTask
             $configs = Config::inst()->get($class, 'extensions', Config::UNINHERITED);
             if($configs) {
                 $valid = in_array(SearchDocumentGenerator::class, $configs)
-                    || in_array(SiteTreeDocumentGenerator::class, $configs);
+                    || in_array(VersionedDocumentGenerator::class, $configs);
 
                 if ($valid) {
                     $list[] = $class;
