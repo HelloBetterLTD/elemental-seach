@@ -11,6 +11,7 @@ namespace SilverStripers\ElementalSearch\Extensions;
 
 
 use SilverStripe\CMS\Controllers\CMSMain;
+use SilverStripe\Core\Config\Configurable;
 use SilverStripe\Core\Extension;
 use SilverStripe\Forms\Form;
 use SilverStripe\Forms\FormAction;
@@ -18,11 +19,15 @@ use SilverStripe\Forms\FormAction;
 class CMSMainExtension extends Extension
 {
 
+    use Configurable;
+
+    private static $display_create_button = true;
+    
     public function updateEditForm(Form $form)
     {
         $record = $this->owner->getRecord($this->owner->currentPageID());
 
-        if(!$record->isOnDraftOnly()){
+        if(!$record->isOnDraftOnly() && self::config()->get('display_create_button')){
             $form->Actions()->insertAfter('action_publish',
                 FormAction::create('makeSearch', 'Create Search Doc')
                     ->setUseButtonTag(true)
