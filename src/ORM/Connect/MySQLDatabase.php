@@ -209,7 +209,21 @@ class MySQLDatabase extends SS_MySQLDatabase
         }
         if ($start < 0) {
             $start = 0;
+        } else { // we need to get a start of a sentence
+            $firstChar = substr($content, $start, 1);
+            if ($firstChar === '.') {
+                $start += 1; // exclude the dot
+            } else {
+                $offsetString = substr($content, 0, $start);
+                $lastFullStop = strrpos($offsetString, '.');
+                if ($lastFullStop !== false) {
+                    $start = $lastFullStop + 1;
+                } else { // this is the first sentence
+                    $start = 0;
+                }
+            }
         }
+
         return trim(mb_substr($content, $start, $snippetLength));
     }
 
