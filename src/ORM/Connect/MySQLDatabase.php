@@ -170,12 +170,11 @@ class MySQLDatabase extends SS_MySQLDatabase
 
         // Get records
         $records = $this->preparedQuery($fullQuery, $queryParameters);
-
         $objects = array();
-
         foreach ($records as $record) {
             $object = DataList::create($record['ClassName'])->byID($record['ID']);
             if ($object && $object->canView()) {
+                $object->SearchSnippet =  $this->generateSearchSnippet($keywords, $record['Content']);
                 $objects[] = $object;
             }
         }
@@ -190,5 +189,72 @@ class MySQLDatabase extends SS_MySQLDatabase
 
         return $list;
     }
+
+    public function generateSearchSnippet($keywords, $content)
+    {
+        $snippetLength = 200;
+        $content = preg_replace('/\s+/', ' ', $content);
+        $length = mb_strlen($content);
+        $words = preg_split(
+            '/[^\p{L}\p{N}\p{Pc}\p{Pd}@]+/u',
+            mb_strtolower($keywords),
+            -1,
+            PREG_SPLIT_NO_EMPTY
+        );
+
+        $occurrences = $this->findOccurrences($words, $content);
+        $start = $this->findUsageBaseOnDensity($occurrences);
+        if ($length - $start < $snippetLength) {
+            $start = $start - ($length - $start) / 2;
+        }
+        if ($start < 0) {
+            $start = 0;
+        }
+        return trim(mb_substr($content, $start, $snippetLength));
+    }
+
+    protected function findUsageBaseOnDensity($occurences)
+    {
+        if (empty($occurences)) {
+            return -1;
+        }
+        $preOffset = 10;
+        $start = $occurences[0];
+        $nofOccurrences = count($occurences);
+        $closest = PHP_INT_MAX;
+
+        if ($nofOccurrences > 2) {
+            for ($i = 1; $i < $nofOccurrences; $i++) {
+                if ($i + 1 === $nofOccurrences) { // last
+                    $diff = $nofOccurrences[$i] - $nofOccurrences[$i - 1];
+                } else {
+                    $diff = $nofOccurrences[$i + 1] - $nofOccurrences[$i];
+                }
+                if ($diff < $closest) {
+                    $closest = $diff;
+                    $start = $nofOccurrences[$i];
+                }
+            }
+        }
+        return $start > $preOffset ? $start - $preOffset : 0;
+    }
+
+    protected function findOccurrences($words, $content)
+    {
+        $occurences = [];
+        foreach ($words as $word) {
+            $length = strlen($word);
+            $occurence = mb_stripos($content, $word);
+            while ($occurence !== false) {
+                $occurences[] = $occurence;
+                $occurence = mb_stripos($content, $word, $occurence + $length);
+            }
+        }
+        $occurences = array_unique($occurences);
+        sort($occurences);
+        return $occurences;
+    }
+
+
 
 }
