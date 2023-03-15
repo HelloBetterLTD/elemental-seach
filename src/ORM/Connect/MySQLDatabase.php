@@ -240,13 +240,13 @@ class MySQLDatabase extends SS_MySQLDatabase
         if ($nofOccurrences > 2) {
             for ($i = 1; $i < $nofOccurrences; $i++) {
                 if ($i + 1 === $nofOccurrences) { // last
-                    $diff = $nofOccurrences[$i] - $nofOccurrences[$i - 1];
+                    $diff = $occurences[$i] - $occurences[$i - 1];
                 } else {
-                    $diff = $nofOccurrences[$i + 1] - $nofOccurrences[$i];
+                    $diff = $occurences[$i + 1] - $occurences[$i];
                 }
                 if ($diff < $closest) {
                     $closest = $diff;
-                    $start = $nofOccurrences[$i];
+                    $start = $occurences[$i];
                 }
             }
         }
