@@ -48,7 +48,7 @@ class GenerateSearchDocument extends BuildTask
 						'Making record for %s type %s, link %s',
 						$record->getTitle(),
 						$record->ClassName,
-						$record->getGenerateSearchLink());
+						ClassInfo::hasMethod($record, 'getGenerateSearchLink') ? $record->getGenerateSearchLink() : $record->Title);
 
                 $output .= $eol;
 

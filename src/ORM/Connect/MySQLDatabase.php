@@ -193,7 +193,11 @@ class MySQLDatabase extends SS_MySQLDatabase
     public function generateSearchSnippet($keywords, $content)
     {
         $snippetLength = 200;
-        $content = preg_replace('/\s+/', ' ', $content);
+        $content = str_replace('&nbsp;', ' ', $content); // &nbsp; is not playing well with spaces
+        $content = preg_replace('/\xc2\xa0/', '', $content);
+        $content = preg_replace('/\s+/', ' ', html_entity_decode($content));
+        $content = trim($content);
+
         $length = mb_strlen($content);
         $words = preg_split(
             '/[^\p{L}\p{N}\p{Pc}\p{Pd}@]+/u',
@@ -204,18 +208,19 @@ class MySQLDatabase extends SS_MySQLDatabase
 
         $occurrences = $this->findOccurrences($words, $content);
         $start = $this->findUsageBaseOnDensity($occurrences);
+
         if ($length - $start < $snippetLength) {
-            $start = $start - ($length - $start) / 2;
+            $start = floor($start - ($length - $start) / 2);
         }
         if ($start < 0) {
             $start = 0;
         } else { // we need to get a start of a sentence
-            $firstChar = substr($content, $start, 1);
+            $firstChar = mb_substr($content, $start, 1);
             if ($firstChar === '.') {
                 $start += 1; // exclude the dot
             } else {
-                $offsetString = substr($content, 0, $start);
-                $lastFullStop = strrpos($offsetString, '.');
+                $offsetString = mb_substr($content, 0, $start);
+                $lastFullStop = mb_strrpos($offsetString, '.');
                 if ($lastFullStop !== false) {
                     $start = $lastFullStop + 1;
                 } else { // this is the first sentence
@@ -224,7 +229,12 @@ class MySQLDatabase extends SS_MySQLDatabase
             }
         }
 
-        return trim(mb_substr($content, $start, $snippetLength));
+        $ret = mb_substr($content, $start, $snippetLength);
+        $ret = trim($ret);
+        if ($start + $snippetLength < mb_strlen($content)) {
+            $ret .= '...';
+        }
+        return $ret;
     }
 
     protected function findUsageBaseOnDensity($occurences)
@@ -257,7 +267,7 @@ class MySQLDatabase extends SS_MySQLDatabase
     {
         $occurences = [];
         foreach ($words as $word) {
-            $length = strlen($word);
+            $length = mb_strlen($word);
             $occurence = mb_stripos($content, $word);
             while ($occurence !== false) {
                 $occurences[] = $occurence;

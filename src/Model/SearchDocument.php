@@ -55,18 +55,17 @@ class SearchDocument extends DataObject
         }
 
         $output = [];
-        $searchLink = $origin->getGenerateSearchLink();
-
-        $oldThemes = SSViewer::get_themes();
-        SSViewer::set_themes(SSViewer::config()->get('themes'));
 
         try {
+            $oldThemes = SSViewer::get_themes();
+            SSViewer::set_themes(SSViewer::config()->get('themes'));
+
             $isSiteTree = is_a($origin, SiteTree::class);
             $hasSearchLink = method_exists($origin, 'getGenerateSearchLink');
             $contents = '';
 
-
             if ($isSiteTree || $hasSearchLink) {
+                $searchLink = $origin->getGenerateSearchLink();
                 $bypassElemental = self::config()->get('use_only_x_path');
                 if (!$bypassElemental) {
                     $bypassElemental = self::config()->get('use_only_x_path');
