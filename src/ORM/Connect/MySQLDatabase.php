@@ -87,19 +87,26 @@ class MySQLDatabase extends SS_MySQLDatabase
             ? "NOT "
             : "";
         if ($keywords) {
-            $match[$documentClass] = "
-				MATCH (Title, Content) AGAINST ('$keywords' $boolean)
-				+ MATCH (Title, Content) AGAINST ('$htmlEntityKeywords' $boolean)
-			";
+            if ($keywords == $htmlEntityKeywords) {
+                $match[$documentClass] = "MATCH (Title, Content) AGAINST ('$keywords' $boolean)";
+            } else {
+                $match[$documentClass] = "
+                    MATCH (Title, Content) AGAINST ('$keywords' $boolean)
+                    + MATCH (Title, Content) AGAINST ('$htmlEntityKeywords' $boolean)
+                ";
+            }
             $fileClassSQL = Convert::raw2sql($fileClass);
             $match[$fileClass] = "MATCH (Name, Title) AGAINST ('$keywords' $boolean) AND ClassName = '$fileClassSQL'";
 
             // We make the relevance search by converting a boolean mode search into a normal one
             $relevanceKeywords = str_replace(array('*', '+', '-'), '', $keywords);
             $htmlEntityRelevanceKeywords = str_replace(array('*', '+', '-'), '', $htmlEntityKeywords);
-            $relevance[$documentClass] = "MATCH (Title, Content) "
-                . "AGAINST ('$relevanceKeywords') "
-                . "+ MATCH (Title, Content) AGAINST ('$htmlEntityRelevanceKeywords')";
+            if ($relevanceKeywords == $htmlEntityRelevanceKeywords) {
+                $relevance[$documentClass] = "MATCH (Title, Content) AGAINST ('$relevanceKeywords')";
+            } else {
+                $relevance[$documentClass] = "MATCH (Title, Content) AGAINST ('$relevanceKeywords') "
+                    . "+ MATCH (Title, Content) AGAINST ('$htmlEntityRelevanceKeywords')";
+            }
             $relevance[$fileClass] = "MATCH (Name, Title) AGAINST ('$relevanceKeywords')";
         } else {
             $relevance[$documentClass] = $relevance[$fileClass] = 1;
@@ -167,6 +174,7 @@ class MySQLDatabase extends SS_MySQLDatabase
             $totalCount += $query->unlimitedRowCount();
         }
         $fullQuery = implode(" UNION ", $querySQLs) . " ORDER BY $sortBy LIMIT $limit";
+
 
         // Get records
         $records = $this->preparedQuery($fullQuery, $queryParameters);
