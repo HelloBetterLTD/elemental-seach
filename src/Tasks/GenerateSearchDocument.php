@@ -42,6 +42,7 @@ class GenerateSearchDocument extends BuildTask
         $eol = Director::is_cli() ? PHP_EOL . PHP_EOL : '<br>';
         set_time_limit(50000);
         $classes = $this->getAllSearchDocClasses();
+        $locales = SearchDocumentGenerator::get_locales();
         foreach ($classes as $class) {
             foreach ($list = DataList::create($class) as $record) {
 				$output = sprintf(
@@ -54,7 +55,9 @@ class GenerateSearchDocument extends BuildTask
 
                 echo $output;
 				try {
-					SearchDocumentGenerator::make_document_for($record);
+				    foreach ($locales as $locale) {
+                        SearchDocumentGenerator::make_document_for($record, $locale);
+                    }
 				} catch (Exception $e) {
 				}
             }

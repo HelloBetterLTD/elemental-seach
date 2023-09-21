@@ -11,7 +11,10 @@ namespace SilverStripers\ElementalSearch\Extensions;
 
 use \Exception;
 use SilverStripe\Control\Director;
+use SilverStripe\Core\ClassInfo;
+use SilverStripe\Core\Injector\Injector;
 use SilverStripe\ORM\DataExtension;
+use SilverStripe\ORM\DataList;
 use SilverStripe\ORM\DataObject;
 use SilverStripe\Versioned\Versioned;
 use SilverStripe\View\TemplateGlobalProvider;
@@ -65,10 +68,59 @@ class SearchDocumentGenerator extends DataExtension implements TemplateGlobalPro
         self::delete_doc($this->owner);
     }
 
-    public static function make_document_for(DataObject $object)
+    public static function is_transalated()
     {
+        $class = 'TractorCow\\Fluent\\State\\FluentState';
+        return ClassInfo::exists($class);
+    }
+
+    public static function get_current_locale()
+    {
+        $locale = null;
+        $class = 'TractorCow\\Fluent\\State\\FluentState';
+        if (ClassInfo::exists($class)) {
+            $stage = Injector::inst()->get($class);
+            $locale = $stage->getLocale();
+        }
+        return $locale;
+    }
+
+    public static function set_locale($locale)
+    {
+        $class = 'TractorCow\\Fluent\\State\\FluentState';
+        if (ClassInfo::exists($class)) {
+            $stage = Injector::inst()->get($class);
+            $stage->setLocale($locale);
+        }
+    }
+
+    public static function get_locales()
+    {
+        if (self::is_transalated()) {
+            $list = [];
+            $locale = 'TractorCow\\Fluent\\Model\\Locale';
+            foreach (DataList::create($locale) as $object) {
+                $list[] = $object->Locale;
+            }
+            return $list;
+        }
+        return [''];
+    }
+
+
+    public function getCurrentLocale()
+    {
+        return self::get_current_locale();
+    }
+
+    public static function make_document_for(DataObject $object, $locale = null)
+    {
+
         if(self::case_create_document($object)) {
-            $doc = self::find_or_make_document($object);
+            if (!$locale) {
+                $locale = self::get_current_locale();
+            }
+            $doc = self::find_or_make_document($object, $locale);
             $doc->makeSearchContent();
         }
         else {
@@ -102,32 +154,44 @@ class SearchDocumentGenerator extends DataExtension implements TemplateGlobalPro
 
     public static function delete_doc(DataObject $object)
     {
-        $doc = self::find_document($object);
-        if($doc) {
+        foreach (self::find_documents($object) as $doc) {
             $doc->delete();
         }
     }
 
-    public static function find_or_make_document(DataObject $object)
+    public static function find_or_make_document(DataObject $object, $locale = null)
     {
-        $doc = self::find_document($object);
+        $doc = self::find_document($object, $locale);
         if(!$doc) {
             $doc = new SearchDocument([
                 'Type' => get_class($object),
-                'OriginID' => $object->ID
+                'OriginID' => $object->ID,
+                'Locale' => $locale
             ]);
             $doc->write();
         }
         return $doc;
     }
 
-    public static function find_document(DataObject $object)
+    public static function find_document(DataObject $object, $locale = null)
     {
-        $doc = SearchDocument::get()->filter([
+        $filters = [
             'Type' => get_class($object),
             'OriginID' => $object->ID
-        ])->first();
+        ];
+        if ($locale) {
+            $filters['Locale'] = $locale;
+        }
+        $doc = SearchDocument::get()->filter($filters)->first();
         return $doc;
+    }
+
+    public static function find_documents(DataObject $object)
+    {
+        return SearchDocument::get()->filter([
+            'Type' => get_class($object),
+            'OriginID' => $object->ID
+        ]);
     }
 
     public static function is_search()

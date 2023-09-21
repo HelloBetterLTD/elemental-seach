@@ -15,6 +15,7 @@ use SilverStripe\Core\Config\Configurable;
 use SilverStripe\Core\Extension;
 use SilverStripe\Forms\Form;
 use SilverStripe\Forms\FormAction;
+use SilverStripe\ORM\DataList;
 
 class CMSMainExtension extends Extension
 {
@@ -43,7 +44,14 @@ class CMSMainExtension extends Extension
         $id = $owner->currentPageID();
         $record = $owner->getRecord($id);
         if($record) {
-            SearchDocumentGenerator::make_document_for($record);
+            if (SearchDocumentGenerator::is_transalated()) {
+                $list = DataList::create('TractorCow\\Fluent\\Model\\Locale');
+                foreach ($list as $locale) {
+                    SearchDocumentGenerator::make_document_for($record, $locale->Locale);
+                }
+            } else {
+                SearchDocumentGenerator::make_document_for($record);
+            }
             $message = 'Search document generator';
         }
         else {

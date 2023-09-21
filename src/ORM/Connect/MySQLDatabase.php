@@ -24,6 +24,7 @@ use SilverStripe\ORM\PaginatedList;
 use SilverStripe\ORM\Queries\SQLSelect;
 use SilverStripe\ORM\Connect\MySQLDatabase as SS_MySQLDatabase;
 use SilverStripe\Versioned\Versioned;
+use SilverStripers\ElementalSearch\Extensions\SearchDocumentGenerator;
 use SilverStripers\ElementalSearch\Model\SearchDocument;
 use SilverStripers\ElementalSearch\ORM\Search\FulltextSearchable;
 
@@ -56,7 +57,16 @@ class MySQLDatabase extends SS_MySQLDatabase
         $keywords = $this->escapeString($keywords);
         $htmlEntityKeywords = htmlentities($keywords, ENT_NOQUOTES, 'UTF-8');
 
-        $extraFilters = array($documentClass => '', $fileClass => '');
+        $extraFilters = [
+            $documentClass => '',
+            $fileClass => ''
+        ];
+        if (SearchDocumentGenerator::is_transalated() && ($locale = SearchDocumentGenerator::get_current_locale())) {
+            $extraFilters = [
+                $documentClass => sprintf(' AND "Locale" = \'%s\'', $locale),
+                $fileClass => ''
+            ];
+        }
 
         $boolean = '';
         if ($booleanSearch) {
@@ -65,7 +75,6 @@ class MySQLDatabase extends SS_MySQLDatabase
 
         if ($extraFilter) {
             $extraFilters[$documentClass] = " AND $extraFilter";
-
             if ($alternativeFileFilter) {
                 $extraFilters[$fileClass] = " AND $alternativeFileFilter";
             } else {
