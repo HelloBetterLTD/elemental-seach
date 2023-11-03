@@ -110,7 +110,7 @@ class SearchDocument extends DataObject
      */
     protected function searchXPath($xPath, $html)
     {
-        $contents = strip_tags($html);
+        $contents = ''; //strip_tags($html);
         if ($html) {
             try {
                 $domDoc = new \DOMDocument();

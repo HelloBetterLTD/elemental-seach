@@ -184,7 +184,7 @@ class MySQLDatabase extends SS_MySQLDatabase
         foreach ($records as $record) {
             $object = DataObject::get_by_id($record['ClassName'], $record['ID']);
             if ($object && $object->exists() && $object->canView()) {
-                $object->SearchSnippet =  $this->generateSearchSnippet($keywords, $record['Content']);
+                $object->SearchSnippet =  $this->generateSearchSnippet($keywords, $record['Content'] ?? '');
                 $objects[] = $object;
             }
         }
