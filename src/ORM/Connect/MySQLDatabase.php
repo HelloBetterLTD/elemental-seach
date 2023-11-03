@@ -184,6 +184,7 @@ class MySQLDatabase extends SS_MySQLDatabase
         foreach ($records as $record) {
             $object = DataObject::get_by_id($record['ClassName'], $record['ID']);
             if ($object && $object->exists() && $object->canView()) {
+                $object->SearchSnippet =  $this->generateSearchSnippet($keywords, $record['Content']);
                 $objects[] = $object;
             }
         }
@@ -197,6 +198,95 @@ class MySQLDatabase extends SS_MySQLDatabase
         $list->setLimitItems(false);
 
         return $list;
+    }
+
+    public function generateSearchSnippet($keywords, $content)
+    {
+        $snippetLength = 200;
+        $content = str_replace('&nbsp;', ' ', $content); // &nbsp; is not playing well with spaces
+        $content = preg_replace('/\xc2\xa0/', '', $content);
+        $content = preg_replace('/\s+/', ' ', html_entity_decode($content));
+        $content = trim($content);
+
+        $length = mb_strlen($content);
+        $words = preg_split(
+            '/[^\p{L}\p{N}\p{Pc}\p{Pd}@]+/u',
+            mb_strtolower($keywords),
+            -1,
+            PREG_SPLIT_NO_EMPTY
+        );
+
+        $occurrences = $this->findOccurrences($words, $content);
+        $start = $this->findUsageBaseOnDensity($occurrences);
+
+        if ($length - $start < $snippetLength) {
+            $start = floor($start - ($length - $start) / 2);
+        }
+        if ($start < 0) {
+            $start = 0;
+        } else { // we need to get a start of a sentence
+            $firstChar = mb_substr($content, $start, 1);
+            if ($firstChar === '.') {
+                $start += 1; // exclude the dot
+            } else {
+                $offsetString = mb_substr($content, 0, $start);
+                $lastFullStop = mb_strrpos($offsetString, '.');
+                if ($lastFullStop !== false) {
+                    $start = $lastFullStop + 1;
+                } else { // this is the first sentence
+                    $start = 0;
+                }
+            }
+        }
+
+        $ret = mb_substr($content, $start, $snippetLength);
+        $ret = trim($ret);
+        if ($start + $snippetLength < mb_strlen($content)) {
+            $ret .= '...';
+        }
+        return $ret;
+    }
+
+    protected function findUsageBaseOnDensity($occurences)
+    {
+        if (empty($occurences)) {
+            return -1;
+        }
+        $preOffset = 10;
+        $start = $occurences[0];
+        $nofOccurrences = count($occurences);
+        $closest = PHP_INT_MAX;
+
+        if ($nofOccurrences > 2) {
+            for ($i = 1; $i < $nofOccurrences; $i++) {
+                if ($i + 1 === $nofOccurrences) { // last
+                    $diff = $occurences[$i] - $occurences[$i - 1];
+                } else {
+                    $diff = $occurences[$i + 1] - $occurences[$i];
+                }
+                if ($diff < $closest) {
+                    $closest = $diff;
+                    $start = $occurences[$i];
+                }
+            }
+        }
+        return $start > $preOffset ? $start - $preOffset : 0;
+    }
+
+    protected function findOccurrences($words, $content)
+    {
+        $occurences = [];
+        foreach ($words as $word) {
+            $length = mb_strlen($word);
+            $occurence = mb_stripos($content, $word);
+            while ($occurence !== false) {
+                $occurences[] = $occurence;
+                $occurence = mb_stripos($content, $word, $occurence + $length);
+            }
+        }
+        $occurences = array_unique($occurences);
+        sort($occurences);
+        return $occurences;
     }
 
 }
