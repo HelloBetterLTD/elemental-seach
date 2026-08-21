@@ -10,6 +10,9 @@
 namespace SilverStripers\ElementalSearch\Tasks;
 
 
+use Symfony\Component\Console\Input\InputInterface;
+use SilverStripe\PolyExecution\PolyOutput;
+use Symfony\Component\Console\Command\Command;
 use SilverStripe\Control\Director;
 use SilverStripe\Control\HTTPRequest;
 use SilverStripe\Core\ClassInfo;
@@ -17,18 +20,17 @@ use SilverStripe\Core\Config\Config;
 use SilverStripe\Dev\BuildTask;
 use SilverStripe\ORM\DataList;
 use SilverStripe\ORM\DataObject;
-use SilverStripers\ElementalSearch\Extensions\ElementDocumentGeneratorExtension;
 use SilverStripers\ElementalSearch\Extensions\SearchDocumentGenerator;
 use SilverStripers\ElementalSearch\Extensions\SiteTreeDocumentGenerator;
 
 class GenerateSearchDocument extends BuildTask
 {
 
-    protected $title = 'Re-generate all search documents';
+    protected string $title = 'Re-generate all search documents';
 
-    protected $description = 'Generate search documents for items.';
+    protected static string $description = 'Generate search documents for items.';
 
-    private static $segment = 'make-search-docs';
+    protected static string $commandName = 'make-search-docs';
 
     /**
      * Implement this method in the task subclass to
@@ -37,7 +39,7 @@ class GenerateSearchDocument extends BuildTask
      * @param HTTPRequest $request
      * @return
      */
-    public function run($request)
+    protected function execute(InputInterface $input, PolyOutput $output): int
     {
         $eol = Director::is_cli() ? PHP_EOL . PHP_EOL : '<br>';
         set_time_limit(50000);
@@ -59,7 +61,8 @@ class GenerateSearchDocument extends BuildTask
 				}
             }
         }
-        echo 'Completed';
+        $output->writeln('Completed');
+        return Command::SUCCESS;
     }
 
     public function getAllSearchDocClasses()

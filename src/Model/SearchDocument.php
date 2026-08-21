@@ -10,6 +10,9 @@
 
 namespace SilverStripers\ElementalSearch\Model;
 
+use Exception;
+use DOMDocument;
+use DOMXPath;
 use DNADesign\Elemental\Models\ElementalArea;
 use SilverStripe\CMS\Model\SiteTree;
 use SilverStripe\Control\Director;
@@ -73,7 +76,7 @@ class SearchDocument extends DataObject
 
                 if (!$bypassElemental) {
                     $useElemental = false;
-                    foreach ($origin->hasOne() as $key => $class) {
+                    foreach ($origin->hasOne() as $class) {
                         if ($class == ElementalArea::class) {
                             $useElemental = true;
                         }
@@ -152,7 +155,7 @@ class SearchDocument extends DataObject
                 $this->Content = $contents;
             }
             $this->write();
-        } catch (\Exception $e) {
+        } catch (Exception $e) {
         } finally {
             // Reset theme if an exception occurs, if you don't have a
             // try / finally around code that might throw an Exception,
@@ -171,10 +174,10 @@ class SearchDocument extends DataObject
     {
         $contents = '';
         if ($html) {
-            $domDoc = new \DOMDocument();
+            $domDoc = new DOMDocument();
             @$domDoc->loadHTML($html);
 
-            $finder = new \DOMXPath($domDoc);
+            $finder = new DOMXPath($domDoc);
             $nodes = $finder->query("//*[contains(@class, '$xPath')]");
             $nodeValues = [];
             if ($nodes->length) {

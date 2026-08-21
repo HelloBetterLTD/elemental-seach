@@ -10,7 +10,6 @@
 namespace SilverStripers\ElementalSearch\Extensions;
 
 
-use SilverStripe\CMS\Controllers\CMSMain;
 use SilverStripe\Core\Config\Configurable;
 use SilverStripe\Core\Extension;
 use SilverStripe\Forms\Form;
@@ -25,7 +24,7 @@ class CMSMainExtension extends Extension
     
     public function updateEditForm(Form $form)
     {
-        $record = $this->owner->getRecord($this->owner->currentPageID());
+        $record = $this->getOwner()->getRecord($this->getOwner()->currentPageID());
 
         if(!$record->isOnDraftOnly() && self::config()->get('display_create_button')){
             $form->Actions()->insertAfter('action_publish',
@@ -39,7 +38,7 @@ class CMSMainExtension extends Extension
     public function makeSearch($data, Form $form)
     {
         /* @var $owner CMSMain */
-        $owner = $this->owner;
+        $owner = $this->getOwner();
         $id = $owner->currentPageID();
         $record = $owner->getRecord($id);
         if($record) {
