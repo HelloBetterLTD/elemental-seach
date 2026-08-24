@@ -9,23 +9,16 @@
 
 namespace SilverStripers\ElementalSearch\ORM\Connect;
 
-use DNADesign\Elemental\Models\BaseElement;
-use DNADesign\Elemental\Models\ElementalArea;
+use SilverStripe\Model\List\PaginatedList;
+use SilverStripe\Model\List\ArrayList;
 use Exception;
 use SilverStripe\Assets\File;
-use SilverStripe\CMS\Model\SiteTree;
-use SilverStripe\Core\ClassInfo;
 use SilverStripe\Core\Convert;
-use SilverStripe\ORM\ArrayList;
 use SilverStripe\ORM\DataList;
 use SilverStripe\ORM\DataObject;
-use SilverStripe\ORM\DB;
-use SilverStripe\ORM\PaginatedList;
 use SilverStripe\ORM\Queries\SQLSelect;
 use SilverStripe\ORM\Connect\MySQLDatabase as SS_MySQLDatabase;
-use SilverStripe\Versioned\Versioned;
 use SilverStripers\ElementalSearch\Model\SearchDocument;
-use SilverStripers\ElementalSearch\ORM\Search\FulltextSearchable;
 
 
 
@@ -179,7 +172,7 @@ class MySQLDatabase extends SS_MySQLDatabase
             }
         }
 
-        $list = new PaginatedList(new ArrayList($objects));
+        $list = PaginatedList::create(ArrayList::create($objects));
         $list->setPageStart($start);
         $list->setPageLength($pageLength);
         $list->setTotalItems($totalCount);
