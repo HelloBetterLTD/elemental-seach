@@ -24,7 +24,7 @@ class CMSMainExtension extends Extension
     
     public function updateEditForm(Form $form)
     {
-        $record = $this->getOwner()->getRecord($this->getOwner()->currentPageID());
+        $record = $this->getOwner()->getRecord($this->getOwner()->currentRecordID());
 
         if(!$record->isOnDraftOnly() && self::config()->get('display_create_button')){
             $form->Actions()->insertAfter('action_publish',
@@ -39,7 +39,7 @@ class CMSMainExtension extends Extension
     {
         /* @var $owner CMSMain */
         $owner = $this->getOwner();
-        $id = $owner->currentPageID();
+        $id = $owner->currentRecordID();
         $record = $owner->getRecord($id);
         if($record) {
             SearchDocumentGenerator::make_document_for($record);
